@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Donations.Api/Donations.Api.csproj" />
+  <Project Path="Donations.Application/Donations.Application.csproj" />
+  <Project Path="Donations.Domain/Donations.Domain.csproj" />
+  <Project Path="Donations.Persistence/Donations.Persistence.csproj" />
+  <Project Path="Donations.Tests/Donations.Tests.csproj" />
+</Solution>
