@@ -1,3 +1,115 @@
 @Donations.Api_HostAddress = http://localhost:5001
+@categoriaPanaderia = 01A10DE6-C9D7-7B3D-A70D-4898E8C0A082
+@negocio = 2c1f7c1e-5a7b-4e8a-9a3b-1d2e3f4a5b6c
+
+### 1. Crear donación válida (esperado: 201 Created con el id)
+POST {{Donations.Api_HostAddress}}/api/donations
+Content-Type: application/json
+
+{
+  "businessId": "{{negocio}}",
+  "title": "Pan del día",
+  "description": "20 kg de pan francés horneado hoy, en buen estado.",
+  "quantityAmount": 20,
+  "quantityUnit": "Kilogramos",
+  "foodCategoryId": "{{categoriaPanaderia}}",
+  "pickupAddress": {
+    "roadType": "Calle",
+    "roadNumber": "10",
+    "crossRoadNumber": "43A",
+    "plateNumber": "25",
+    "roadSuffix": "Sur",
+    "city": "Medellín"
+  },
+  "availableUntil": "{{$datetime iso8601 2 h}}"
+}
+
+### 2. Cantidad 0 (esperado: 400 - La cantidad debe ser mayor a cero)
+POST {{Donations.Api_HostAddress}}/api/donations
+Content-Type: application/json
+
+{
+  "businessId": "{{negocio}}",
+  "title": "Pan del día",
+  "description": "Pan francés",
+  "quantityAmount": 0,
+  "quantityUnit": "Kilogramos",
+  "foodCategoryId": "{{categoriaPanaderia}}",
+  "pickupAddress": {
+    "roadType": "Calle",
+    "roadNumber": "10",
+    "crossRoadNumber": "43A",
+    "plateNumber": "25",
+    "roadSuffix": "Sur",
+    "city": "Medellín"
+  },
+  "availableUntil": "{{$datetime iso8601 2 h}}"
+}
+
+### 3. Hora límite en el pasado (esperado: 400 - regla R5)
+POST {{Donations.Api_HostAddress}}/api/donations
+Content-Type: application/json
+
+{
+  "businessId": "{{negocio}}",
+  "title": "Pan del día",
+  "description": "Pan francés",
+  "quantityAmount": 20,
+  "quantityUnit": "Kilogramos",
+  "foodCategoryId": "{{categoriaPanaderia}}",
+  "pickupAddress": {
+    "roadType": "Calle",
+    "roadNumber": "10",
+    "crossRoadNumber": "43A",
+    "plateNumber": "25",
+    "roadSuffix": "Sur",
+    "city": "Medellín"
+  },
+  "availableUntil": "{{$datetime iso8601 -1 h}}"
+}
+
+### 4. Título de 2 caracteres (esperado: 400 - regla R2)
+POST {{Donations.Api_HostAddress}}/api/donations
+Content-Type: application/json
+
+{
+  "businessId": "{{negocio}}",
+  "title": "Pa",
+  "description": "Pan francés",
+  "quantityAmount": 20,
+  "quantityUnit": "Kilogramos",
+  "foodCategoryId": "{{categoriaPanaderia}}",
+  "pickupAddress": {
+    "roadType": "Calle",
+    "roadNumber": "10",
+    "crossRoadNumber": "43A",
+    "plateNumber": "25",
+    "roadSuffix": "Sur",
+    "city": "Medellín"
+  },
+  "availableUntil": "{{$datetime iso8601 2 h}}"
+}
+
+### 5. Categoría que no existe (esperado: 404 - La categoría del alimento no existe)
+POST {{Donations.Api_HostAddress}}/api/donations
+Content-Type: application/json
+
+{
+  "businessId": "{{negocio}}",
+  "title": "Pan del día",
+  "description": "Pan francés",
+  "quantityAmount": 20,
+  "quantityUnit": "Kilogramos",
+  "foodCategoryId": "11111111-1111-1111-1111-111111111111",
+  "pickupAddress": {
+    "roadType": "Calle",
+    "roadNumber": "10",
+    "crossRoadNumber": "43A",
+    "plateNumber": "25",
+    "roadSuffix": "Sur",
+    "city": "Medellín"
+  },
+  "availableUntil": "{{$datetime iso8601 2 h}}"
+}
 
 ###
