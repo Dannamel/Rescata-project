@@ -10,4 +10,7 @@ public interface IDonationsRepository : IRepository<Donation>
         PaginationRequest pagination,
         DonationStatus? status,
         Guid? foodCategoryId);
+
+    /// <summary>Indica si existe la categoría de alimento con el Id dado.</summary>
+    Task<bool> FoodCategoryExistsAsync(Guid foodCategoryId);
 }
