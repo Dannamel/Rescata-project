@@ -1,5 +1,6 @@
 using Donations.Application.Utilities.Mediator;
 using Microsoft.AspNetCore.Mvc;
+using Donations.Application.UseCases.Donations.Commands.CancelDonation;
 using Donations.Application.UseCases.Donations.Commands.CreateDonation;
 using Donations.Application.UseCases.Donations.Commands.UpdateDonation;
 
@@ -26,6 +27,14 @@ public class DonationsController(IMediator mediator) : ControllerBase
     {
         command.Id = id;
         await _mediator.Send(command);
+
+        return NoContent();
+    }
+
+    [HttpPatch("{id:guid}/cancel")]
+    public async Task<IActionResult> Cancel([FromRoute] Guid id)
+    {
+        await _mediator.Send(new CancelDonationCommand(id));
 
         return NoContent();
     }
