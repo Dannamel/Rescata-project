@@ -112,4 +112,20 @@ Content-Type: application/json
   "availableUntil": "{{$datetime iso8601 2 h}}"
 }
 
+### 6. Listado paginado (esperado: 200 con items, totalCount, pageNumber)
+GET {{Donations.Api_HostAddress}}/api/donations?pageNumber=1&pageSize=10
+
+### 7. Listado filtrado por estado Available (esperado: 200 solo disponibles)
+GET {{Donations.Api_HostAddress}}/api/donations?pageNumber=1&pageSize=10&status=Available
+
+### 8. Listado filtrado por categoría (esperado: 200 solo de esa categoría)
+GET {{Donations.Api_HostAddress}}/api/donations?foodCategoryId={{categoriaPanaderia}}
+
+### 9. Detalle por Id existente (esperado: 200 con el detalle)
+# Reemplace el Id por uno devuelto en el POST o en el listado.
+GET {{Donations.Api_HostAddress}}/api/donations/01A10DE6-C9D7-7B3D-A70D-4898E8C0A082
+
+### 10. Detalle por Id inexistente (esperado: 404 - No existe una donación con el Id...)
+GET {{Donations.Api_HostAddress}}/api/donations/11111111-1111-1111-1111-111111111111
+
 ###

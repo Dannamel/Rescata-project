@@ -45,5 +45,12 @@ namespace Donations.Persistence.Repositories
         {
             return await _context.FoodCategories.AnyAsync(c => c.Id == foodCategoryId);
         }
+
+        public async Task<Donation?> GetByIdWithCategoryAsync(Guid id)
+        {
+            return await _context.Set<Donation>()
+                                 .Include(d => d.FoodCategory)
+                                 .FirstOrDefaultAsync(d => d.Id == id);
+        }
     }
 }
