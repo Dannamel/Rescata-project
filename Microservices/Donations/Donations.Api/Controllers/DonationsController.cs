@@ -1,6 +1,7 @@
 using Donations.Application.Utilities.Mediator;
 using Microsoft.AspNetCore.Mvc;
 using Donations.Application.UseCases.Donations.Commands.CreateDonation;
+using Donations.Application.UseCases.Donations.Commands.UpdateDonation;
 
 namespace Donations.Api.Controllers;
 
@@ -18,5 +19,14 @@ public class DonationsController(IMediator mediator) : ControllerBase
         Guid donationId = await _mediator.Send(command);
 
         return StatusCode(StatusCodes.Status201Created, new { id = donationId });
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateDonationCommand command)
+    {
+        command.Id = id;
+        await _mediator.Send(command);
+
+        return NoContent();
     }
 }
