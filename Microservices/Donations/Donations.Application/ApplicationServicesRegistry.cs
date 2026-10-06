@@ -3,6 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Donations.Application.UseCases.Donations.Commands.CancelDonation;
 using Donations.Application.UseCases.Donations.Commands.CreateDonation;
 using Donations.Application.UseCases.Donations.Commands.UpdateDonation;
+using Donations.Application.UseCases.Donations.Queries.GetDonationsList;
+using Donations.Application.UseCases.Donations.Queries.GetDonationById;
+using Donations.Application.Utilities.Pagination;
 using FluentValidation;
 
 namespace Donations.Application;
@@ -13,11 +16,13 @@ public static class ApplicationServicesRegistry
     {
         services.AddScoped<IMediator, SimpleMediator>();
 
-        // Registro de use cases: cada integrante agrega aquí sus handlers, al final.
         services.AddScoped<IRequestHandler<CreateDonationCommand, Guid>, CreateDonationUseCase>();
         services.AddScoped<IRequestHandler<UpdateDonationCommand>, UpdateDonationUseCase>();
         services.AddScoped<IRequestHandler<CancelDonationCommand>, CancelDonationUseCase>();
-        // Validations: registra todos los validadores de FluentValidation de este proyecto.
+
+        services.AddScoped<IRequestHandler<GetDonationsListQuery, PaginationResponse<DonationListItemDTO>>, GetDonationsListUseCase>();
+        services.AddScoped<IRequestHandler<GetDonationByIdQuery, DonationDetailDTO>, GetDonationByIdUseCase>();
+
         services.AddValidatorsFromAssemblyContaining<CreateDonationCommandValidator>();
 
         return services;

@@ -159,6 +159,8 @@ public sealed class UpdateDonationUseCaseTests
             Guid? foodCategoryId) => throw new NotSupportedException();
 
         public Task<bool> FoodCategoryExistsAsync(Guid foodCategoryId) => throw new NotSupportedException();
+
+        public Task<Donation?> GetByIdWithCategoryAsync(Guid id) => throw new NotSupportedException();
     }
 
     private sealed class UnitOfWorkFake : IUnitOfWork

@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Donations.Application.UseCases.Donations.Commands.CancelDonation;
 using Donations.Application.UseCases.Donations.Commands.CreateDonation;
 using Donations.Application.UseCases.Donations.Commands.UpdateDonation;
+using Donations.Application.UseCases.Donations.Queries.GetDonationsList;
+using Donations.Application.UseCases.Donations.Queries.GetDonationById;
 
 namespace Donations.Api.Controllers;
 
@@ -11,8 +13,6 @@ namespace Donations.Api.Controllers;
 public class DonationsController(IMediator mediator) : ControllerBase
 {
     private readonly IMediator _mediator = mediator;
-
-    // Las acciones (POST, GET, PUT, PATCH) las agrega cada integrante al final de esta clase.
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateDonationCommand command)
@@ -37,5 +37,21 @@ public class DonationsController(IMediator mediator) : ControllerBase
         await _mediator.Send(new CancelDonationCommand(id));
 
         return NoContent();
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetList([FromQuery] GetDonationsListQuery query)
+    {
+        var donations = await _mediator.Send(query);
+
+        return Ok(donations);
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var donation = await _mediator.Send(new GetDonationByIdQuery(id));
+
+        return Ok(donation);
     }
 }
