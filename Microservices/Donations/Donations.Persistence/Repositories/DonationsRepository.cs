@@ -40,5 +40,10 @@ namespace Donations.Persistence.Repositories
 
             return await query.ToPagedListAsync(pagination, CancellationToken.None);
         }
+
+        public async Task<bool> FoodCategoryExistsAsync(Guid foodCategoryId)
+        {
+            return await _context.FoodCategories.AnyAsync(c => c.Id == foodCategoryId);
+        }
     }
 }
