@@ -6,6 +6,7 @@ using Donations.Application.Utilities.Pagination;
 using Donations.Domain.Common.ValueObjects;
 using Donations.Domain.Entities.Donations;
 using Donations.Domain.Entities.Donations.ValueObjects;
+using Donations.Domain.Exceptions;
 
 namespace Donations.Tests;
 
@@ -55,6 +56,79 @@ public sealed class UpdateDonationUseCaseTests
         Assert.IsNull(repository.UpdatedDonation);
         Assert.AreEqual(0, unitOfWork.CommitCount);
     }
+
+    [TestMethod]
+    [DataRow(DateTimeKind.Utc)]
+    [DataRow(DateTimeKind.Local)]
+    [DataRow(DateTimeKind.Unspecified)]
+    public async Task Handle_MismaFechaLimite_ActualizaSinExtender(DateTimeKind kind)
+    {
+        Donation donation = CreateDonation();
+        DateTime originalDeadline = donation.AvailableUntil;
+        DonationsRepositoryFake repository = new(donation);
+        UnitOfWorkFake unitOfWork = new();
+        UpdateDonationUseCase useCase = new(repository, unitOfWork);
+        DateTime requestedDeadline = kind switch
+        {
+            DateTimeKind.Local => originalDeadline.ToLocalTime(),
+            DateTimeKind.Unspecified => DateTime.SpecifyKind(originalDeadline, kind),
+            _ => originalDeadline
+        };
+
+        await useCase.Handle(CreateUpdateCommand(donation, requestedDeadline));
+
+        Assert.AreEqual("Pan integral", donation.Title);
+        Assert.AreEqual("Pan en buen estado.", donation.Description);
+        Assert.AreEqual(new Quantity(20m, QuantityUnit.Unidades), donation.Quantity);
+        Assert.AreEqual(originalDeadline, donation.AvailableUntil);
+        Assert.AreSame(donation, repository.UpdatedDonation);
+        Assert.AreEqual(1, unitOfWork.CommitCount);
+    }
+
+    [TestMethod]
+    public async Task Handle_FechaLimiteAnterior_RechazaSinPersistir()
+    {
+        Donation donation = CreateDonation();
+        DateTime originalDeadline = donation.AvailableUntil;
+        DonationsRepositoryFake repository = new(donation);
+        UnitOfWorkFake unitOfWork = new();
+        UpdateDonationUseCase useCase = new(repository, unitOfWork);
+
+        await Assert.ThrowsExactlyAsync<BussinesRuleException>(() =>
+            useCase.Handle(CreateUpdateCommand(donation, originalDeadline.AddMinutes(-10))));
+
+        Assert.AreEqual(originalDeadline, donation.AvailableUntil);
+        Assert.IsNull(repository.UpdatedDonation);
+        Assert.AreEqual(0, unitOfWork.CommitCount);
+    }
+
+    [TestMethod]
+    public async Task Handle_DonacionCanceladaConMismaFecha_RechazaSinPersistir()
+    {
+        Donation donation = CreateDonation();
+        donation.Cancel();
+        DonationsRepositoryFake repository = new(donation);
+        UnitOfWorkFake unitOfWork = new();
+        UpdateDonationUseCase useCase = new(repository, unitOfWork);
+
+        await Assert.ThrowsExactlyAsync<BussinesRuleException>(() =>
+            useCase.Handle(CreateUpdateCommand(donation, donation.AvailableUntil)));
+
+        Assert.AreEqual(DonationStatus.Cancelled, donation.Status);
+        Assert.IsNull(repository.UpdatedDonation);
+        Assert.AreEqual(0, unitOfWork.CommitCount);
+    }
+
+    private static UpdateDonationCommand CreateUpdateCommand(Donation donation, DateTime deadline) =>
+        new()
+        {
+            Id = donation.Id,
+            Title = "Pan integral",
+            Description = "Pan en buen estado.",
+            QuantityAmount = 20m,
+            QuantityUnit = QuantityUnit.Unidades,
+            AvailableUntil = deadline
+        };
 
     private static Donation CreateDonation() =>
         new(Guid.NewGuid(),

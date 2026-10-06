@@ -32,7 +32,17 @@ public sealed class UpdateDonationUseCase : IRequestHandler<UpdateDonationComman
         donation.UpdateTitle(command.Title);
         donation.UpdateDescription(command.Description);
         donation.UpdateQuantity(quantity);
-        donation.ExtendDeadline(command.AvailableUntil);
+        DateTime availableUntilUtc = command.AvailableUntil.Kind switch
+        {
+            DateTimeKind.Utc => command.AvailableUntil,
+            DateTimeKind.Local => command.AvailableUntil.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(command.AvailableUntil, DateTimeKind.Utc)
+        };
+
+        if (availableUntilUtc != donation.AvailableUntil)
+        {
+            donation.ExtendDeadline(availableUntilUtc);
+        }
 
         await _repository.UpdateAsync(donation);
         await _unitOfWork.CommitAsync();
