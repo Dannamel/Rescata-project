@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using Pickups.Api.Data;
 using System.Text.Json.Serialization;
 
 namespace Pickups.Api.Configurations;
@@ -15,6 +17,12 @@ public static class CustomConfiguration
             });
 
         builder.Services.AddOpenApi();
+
+        // DataContext configuration
+        builder.Services.AddDbContext<DataContext>(options =>
+        {
+            options.UseSqlServer(builder.Configuration.GetConnectionString("PickupsConnection"));
+        });
 
         return builder;
     }
