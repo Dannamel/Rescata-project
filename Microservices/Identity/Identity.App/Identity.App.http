@@ -1,0 +1,55 @@
+@Identity.App_HostAddress = http://localhost:5223
+
+### Login como administrador
+# @name loginAdmin
+# @prompt adminPassword Contraseña de admin.test@rescata.local
+POST {{Identity.App_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin.test@rescata.local",
+  "password": "{{adminPassword}}"
+}
+
+### Login como negocio
+# @name loginBusiness
+# @prompt businessPassword Contraseña de business.test@rescata.local
+POST {{Identity.App_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "business.test@rescata.local",
+  "password": "{{businessPassword}}"
+}
+
+### Login con contraseña incorrecta (401)
+POST {{Identity.App_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin.test@rescata.local",
+  "password": "ClaveIncorrecta123"
+}
+
+### Login con datos inválidos (400)
+POST {{Identity.App_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "correo-invalido",
+  "password": ""
+}
+
+### Listado de usuarios con token de administrador (200)
+GET {{Identity.App_HostAddress}}/api/users
+Authorization: Bearer {{loginAdmin.response.body.$.data.accessToken}}
+Accept: application/json
+
+### Listado de usuarios sin token (401)
+GET {{Identity.App_HostAddress}}/api/users
+Accept: application/json
+
+### Listado de usuarios con token de negocio (403)
+GET {{Identity.App_HostAddress}}/api/users
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+Accept: application/json

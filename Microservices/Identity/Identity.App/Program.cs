@@ -85,6 +85,7 @@ builder.Services.AddAuthorization();
 // ==========================================
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUsersService, UsersService>();
 
 // ==========================================
 // CONTROLLERS AND OPENAPI
