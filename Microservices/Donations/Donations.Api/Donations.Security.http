@@ -1,0 +1,123 @@
+# Segunda entrega. Ejecuta las solicitudes en orden con REST Client de VS Code.
+# Usa cuentas de prueba y bases de datos locales con las migraciones aplicadas.
+# Donations debe validar el JWT de Identity y proteger sus endpoints por rol.
+
+@identity = http://localhost:5223
+@donations = http://localhost:5001
+
+### 1. Ejecución de los tres microservicios
+# Desde la raíz del repositorio, ejecuta cada comando en una terminal distinta
+# y muestra en el video el puerto de escucha de cada servicio.
+# dotnet run --project Microservices/Identity/Identity.App --launch-profile http
+# dotnet run --project Microservices/Donations/Donations.Api --launch-profile http
+# dotnet run --project Microservices/Pickups/Pickups.Api --launch-profile http
+
+### 2. Inicialización de Identity mediante seeders
+# En el entorno de prueba, muestra la ejecución del seeder y los usuarios y
+# roles que creó. Puedes comprobar las asignaciones en la base de Identity:
+# SELECT u.Id, u.Email, r.Name AS RoleName
+# FROM AspNetUsers AS u
+# JOIN AspNetUserRoles AS ur ON ur.UserId = u.Id
+# JOIN AspNetRoles AS r ON r.Id = ur.RoleId;
+
+### 3. Autenticación y emisión del JWT (200)
+# Usa una cuenta sembrada con rol Business. Muestra data.accessToken en la respuesta.
+# @name loginBusiness
+# @prompt email Correo de la cuenta de prueba con rol Business
+# @prompt password Contraseña de la cuenta de prueba
+POST {{identity}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### 4. Acceso sin token (401)
+# @no-cookie-jar
+GET {{donations}}/api/donations
+
+### 5. Acceso con token válido (200)
+# @no-cookie-jar
+GET {{donations}}/api/donations
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+
+### 6. Creación con el rol requerido (201)
+# Usa el ID de la cuenta Business del paso 2 y un ID de FoodCategories de Donations.
+# @name crearDonacion
+# @prompt negocioId ID de la cuenta Business de prueba
+# @prompt categoriaId ID de una categoría de alimentos existente
+# @no-cookie-jar
+POST {{donations}}/api/donations
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{
+  "businessId": "{{negocioId}}",
+  "title": "Pan del día",
+  "description": "Donación de prueba de seguridad",
+  "quantityAmount": 2,
+  "quantityUnit": "Kilogramos",
+  "foodCategoryId": "{{categoriaId}}",
+  "pickupAddress": {
+    "roadType": "Calle",
+    "roadNumber": "10",
+    "crossRoadNumber": "43A",
+    "plateNumber": "25",
+    "roadSuffix": "Sur",
+    "city": "Medellín"
+  },
+  "availableUntil": "{{$datetime iso8601 2 h}}"
+}
+
+### Preparación del paso 7. Inicio de sesión con el otro rol (200)
+# Usa una cuenta sembrada que no tenga los roles Business ni Admin.
+# @name loginSinPermiso
+# @prompt email Correo de la cuenta de prueba sin permiso de escritura
+# @prompt password Contraseña de la cuenta de prueba
+POST {{identity}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### 7. Creación con un token válido sin el rol requerido (403)
+# Envía el mismo cuerpo del paso 6 con el JWT de la cuenta sin permiso.
+# @no-cookie-jar
+POST {{donations}}/api/donations
+Authorization: Bearer {{loginSinPermiso.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{{crearDonacion.request.body.*}}
+
+### 8a. Acceso con token manipulado (401)
+# Copia el JWT todavía vigente del paso 3. En el tercer segmento (firma),
+# cambia el primer carácter por A, o por B si ya empieza en A.
+# @prompt tokenManipulado JWT con la firma modificada
+# @no-cookie-jar
+GET {{donations}}/api/donations
+Authorization: Bearer {{tokenManipulado}}
+
+### Preparación del paso 8b. Emisión de un JWT de corta duración (200)
+# Reinicia Identity con Jwt__ExpirationMinutes=1 en su entorno y ejecuta este login.
+# En PowerShell, define $env:Jwt__ExpirationMinutes = '1' antes de arrancar Identity.
+# @name loginCorto
+# @prompt email Correo de una cuenta de prueba válida
+# @prompt password Contraseña de la cuenta de prueba
+POST {{identity}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### 8b. Acceso con token expirado (401)
+# Espera hasta que pase data.expiresAtUtc más la tolerancia de reloj de Donations.
+# Envía el mismo JWT emitido en la preparación del paso 8b.
+# Al terminar, restaura la vigencia habitual de Identity para las siguientes pruebas.
+# @no-cookie-jar
+GET {{donations}}/api/donations
+Authorization: Bearer {{loginCorto.response.body.$.data.accessToken}}
