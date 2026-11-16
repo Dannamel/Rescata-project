@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Pickups.Api.Core;
 using Pickups.Api.Core.Pagination;
@@ -45,6 +46,14 @@ public sealed class PickupService : IPickupService
                 Error.Validation("Pickups.DonationUnavailable", "La donación no está disponible para recogida."));
         }
 
+        Error deadlineError = ValidateDonationDeadline(donation.Value, scheduledAt, dto.DurationInMinutes);
+
+        if (deadlineError != Error.None)
+        {
+            return Result.Failure<PickupDTO>(deadlineError);
+        }
+
+        // Revisión rápida para dar un mensaje claro; la garantía real es el índice único UX_Pickups_ActiveDonation
         bool hasActivePickup = await _context.Pickups.AnyAsync(p => p.DonationId == dto.DonationId
                                                                  && (p.Status == PickupStatusEnum.Pending
                                                                      || p.Status == PickupStatusEnum.Confirmed));
@@ -68,9 +77,8 @@ public sealed class PickupService : IPickupService
         };
 
         _context.Pickups.Add(pickup);
-        await _context.SaveChangesAsync();
 
-        return Result.Success(ToDTO(pickup));
+        return await SaveAndMapAsync(pickup);
     }
 
     public async Task<Result<PickupDTO>> GetOneAsync(Guid id, Guid userId, bool isAdmin)
@@ -124,14 +132,27 @@ public sealed class PickupService : IPickupService
                 Error.Validation("Pickups.InvalidDate", "La fecha de recogida debe ser futura."));
         }
 
+        // Al reprogramar también hay que respetar el límite de la donación
+        Result<DonationSummaryDTO> donation = await _donationsClient.GetDonationAsync(pickup.DonationId);
+
+        if (donation.IsFailure)
+        {
+            return Result.Failure<PickupDTO>(donation.Error);
+        }
+
+        Error deadlineError = ValidateDonationDeadline(donation.Value, scheduledAt, dto.DurationInMinutes);
+
+        if (deadlineError != Error.None)
+        {
+            return Result.Failure<PickupDTO>(deadlineError);
+        }
+
         pickup.ScheduledAt = scheduledAt;
         pickup.DurationInMinutes = dto.DurationInMinutes;
         pickup.Notes = dto.Notes;
         pickup.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
-
-        return Result.Success(ToDTO(pickup));
+        return await SaveAndMapAsync(pickup);
     }
 
     public async Task<Result<PickupDTO>> CancelAsync(Guid id, Guid userId, CancelPickupDTO dto, bool isAdmin)
@@ -156,9 +177,7 @@ public sealed class PickupService : IPickupService
         pickup.CancelledAt = DateTime.UtcNow;
         pickup.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
-
-        return Result.Success(ToDTO(pickup));
+        return await SaveAndMapAsync(pickup);
     }
 
     public async Task<Result<PickupDTO>> ConfirmAsync(Guid id, Guid userId, bool isAdmin)
@@ -181,9 +200,7 @@ public sealed class PickupService : IPickupService
         pickup.Status = PickupStatusEnum.Confirmed;
         pickup.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
-
-        return Result.Success(ToDTO(pickup));
+        return await SaveAndMapAsync(pickup);
     }
 
     public async Task<Result<PickupDTO>> CompleteAsync(Guid id, Guid userId, bool isAdmin)
@@ -206,9 +223,56 @@ public sealed class PickupService : IPickupService
         pickup.Status = PickupStatusEnum.Completed;
         pickup.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        return await SaveAndMapAsync(pickup);
+    }
 
-        return Result.Success(ToDTO(pickup));
+    /// <summary>La donación no debe estar vencida y la recogida debe terminar antes de su límite (AvailableUntil).</summary>
+    private static Error ValidateDonationDeadline(DonationSummaryDTO donation, DateTime scheduledAt, int durationInMinutes)
+    {
+        DateTime availableUntil = ToUtc(donation.AvailableUntil);
+
+        if (availableUntil <= DateTime.UtcNow)
+        {
+            return Error.Validation("Pickups.DonationExpired", "La donación ya venció y no se puede recoger.");
+        }
+
+        if (scheduledAt.AddMinutes(durationInMinutes) > availableUntil)
+        {
+            return Error.Validation("Pickups.AfterDonationDeadline",
+                $"La recogida debe terminar antes del límite de la donación ({availableUntil:yyyy-MM-dd HH:mm} UTC).");
+        }
+
+        return Error.None;
+    }
+
+    private async Task<Result<PickupDTO>> SaveAndMapAsync(Pickup pickup)
+    {
+        Error saveError = await SaveAsync();
+
+        return saveError == Error.None
+            ? Result.Success(ToDTO(pickup))
+            : Result.Failure<PickupDTO>(saveError);
+    }
+
+    /// <summary>Guarda y convierte en 409 los choques entre solicitudes simultáneas.</summary>
+    private async Task<Error> SaveAsync()
+    {
+        try
+        {
+            await _context.SaveChangesAsync();
+            return Error.None;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Otra operación cambió la recogida entre que la leímos y la guardamos (RowVersion distinto)
+            return Error.Conflict("Pickups.ConcurrencyConflict",
+                "La recogida fue modificada por otra operación al mismo tiempo. Consulte su estado e intente de nuevo.");
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2601 or 2627 })
+        {
+            // 2601/2627 = violación de índice único: otra solicitud ya creó la recogida activa de esta donación
+            return Error.Conflict("Pickups.AlreadyScheduled", "La donación ya tiene una recogida activa.");
+        }
     }
 
     /// <summary>Busca la recogida: el Admin puede ver cualquiera; los demás, solo las que programaron.</summary>
