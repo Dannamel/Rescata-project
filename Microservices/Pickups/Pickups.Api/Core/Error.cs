@@ -16,4 +16,8 @@ public sealed record Error(string Code, string Description, ErrorType Type)
 
     public static Error Failure(string code, string description) =>
         new(code, description, ErrorType.Failure);
+
+    /// <summary>El usuario está autenticado, pero no puede actuar sobre este recurso.</summary>
+    public static Error Forbidden(string code, string description) =>
+        new(code, description, ErrorType.Forbidden);
 }

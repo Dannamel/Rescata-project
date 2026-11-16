@@ -9,5 +9,7 @@ public enum ErrorType
 
     Conflict,
 
-    Failure
+    Failure,
+
+    Forbidden
 }
