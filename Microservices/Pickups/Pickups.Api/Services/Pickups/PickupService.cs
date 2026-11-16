@@ -40,17 +40,11 @@ public sealed class PickupService : IPickupService
             return Result.Failure<PickupDTO>(donation.Error);
         }
 
-        if (!string.Equals(donation.Value.Status, AvailableDonationStatus, StringComparison.OrdinalIgnoreCase))
-        {
-            return Result.Failure<PickupDTO>(
-                Error.Validation("Pickups.DonationUnavailable", "La donación no está disponible para recogida."));
-        }
+        Error donationError = ValidateDonation(donation.Value, scheduledAt, dto.DurationInMinutes);
 
-        Error deadlineError = ValidateDonationDeadline(donation.Value, scheduledAt, dto.DurationInMinutes);
-
-        if (deadlineError != Error.None)
+        if (donationError != Error.None)
         {
-            return Result.Failure<PickupDTO>(deadlineError);
+            return Result.Failure<PickupDTO>(donationError);
         }
 
         // Revisión rápida para dar un mensaje claro; la garantía real es el índice único UX_Pickups_ActiveDonation
@@ -132,7 +126,7 @@ public sealed class PickupService : IPickupService
                 Error.Validation("Pickups.InvalidDate", "La fecha de recogida debe ser futura."));
         }
 
-        // Al reprogramar también hay que respetar el límite de la donación
+        // Al reprogramar, la donación debe seguir disponible y la nueva fecha debe respetar su límite
         Result<DonationSummaryDTO> donation = await _donationsClient.GetDonationAsync(pickup.DonationId);
 
         if (donation.IsFailure)
@@ -140,11 +134,11 @@ public sealed class PickupService : IPickupService
             return Result.Failure<PickupDTO>(donation.Error);
         }
 
-        Error deadlineError = ValidateDonationDeadline(donation.Value, scheduledAt, dto.DurationInMinutes);
+        Error donationError = ValidateDonation(donation.Value, scheduledAt, dto.DurationInMinutes);
 
-        if (deadlineError != Error.None)
+        if (donationError != Error.None)
         {
-            return Result.Failure<PickupDTO>(deadlineError);
+            return Result.Failure<PickupDTO>(donationError);
         }
 
         pickup.ScheduledAt = scheduledAt;
@@ -226,9 +220,17 @@ public sealed class PickupService : IPickupService
         return await SaveAndMapAsync(pickup);
     }
 
-    /// <summary>La donación no debe estar vencida y la recogida debe terminar antes de su límite (AvailableUntil).</summary>
-    private static Error ValidateDonationDeadline(DonationSummaryDTO donation, DateTime scheduledAt, int durationInMinutes)
+    /// <summary>
+    /// Reglas de la donación para crear o reprogramar: debe estar Available, no debe estar vencida
+    /// y la recogida debe terminar antes de su límite (AvailableUntil).
+    /// </summary>
+    private static Error ValidateDonation(DonationSummaryDTO donation, DateTime scheduledAt, int durationInMinutes)
     {
+        if (!string.Equals(donation.Status, AvailableDonationStatus, StringComparison.OrdinalIgnoreCase))
+        {
+            return Error.Validation("Pickups.DonationUnavailable", "La donación no está disponible para recogida.");
+        }
+
         DateTime availableUntil = ToUtc(donation.AvailableUntil);
 
         if (availableUntil <= DateTime.UtcNow)
@@ -236,7 +238,10 @@ public sealed class PickupService : IPickupService
             return Error.Validation("Pickups.DonationExpired", "La donación ya venció y no se puede recoger.");
         }
 
-        if (scheduledAt.AddMinutes(durationInMinutes) > availableUntil)
+        // Se compara la duración con el tiempo que queda hasta el límite, en vez de sumarle minutos a la fecha:
+        // con fechas extremas (9999-12-31) AddMinutes se desborda y lanza excepción (500).
+        // Si la fecha es posterior al límite, la resta es negativa y también entra aquí.
+        if (availableUntil - scheduledAt < TimeSpan.FromMinutes(durationInMinutes))
         {
             return Error.Validation("Pickups.AfterDonationDeadline",
                 $"La recogida debe terminar antes del límite de la donación ({availableUntil:yyyy-MM-dd HH:mm} UTC).");
