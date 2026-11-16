@@ -1,4 +1,5 @@
 using Donations.Application.Utilities.Mediator;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Donations.Application.UseCases.Donations.Commands.CancelDonation;
 using Donations.Application.UseCases.Donations.Commands.CreateDonation;
@@ -10,11 +11,15 @@ namespace Donations.Api.Controllers;
 
 [ApiController]
 [Route("api/donations")]
+[Authorize]
 public class DonationsController(IMediator mediator) : ControllerBase
 {
+    private const string BusinessOrAdmin = "Business,Admin";
+
     private readonly IMediator _mediator = mediator;
 
     [HttpPost]
+    [Authorize(Roles = BusinessOrAdmin)]
     public async Task<IActionResult> Create([FromBody] CreateDonationCommand command)
     {
         Guid donationId = await _mediator.Send(command);
@@ -23,6 +28,7 @@ public class DonationsController(IMediator mediator) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = BusinessOrAdmin)]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateDonationCommand command)
     {
         command.Id = id;
@@ -32,6 +38,7 @@ public class DonationsController(IMediator mediator) : ControllerBase
     }
 
     [HttpPatch("{id:guid}/cancel")]
+    [Authorize(Roles = BusinessOrAdmin)]
     public async Task<IActionResult> Cancel([FromRoute] Guid id)
     {
         await _mediator.Send(new CancelDonationCommand(id));
