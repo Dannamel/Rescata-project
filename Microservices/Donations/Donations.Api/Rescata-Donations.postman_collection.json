@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Rescata - Donations (Entrega 2)",
-    "description": "Pruebas de la Entrega del microservicio Donations, ahora con autenticación.\n\nDonations exige un JWT emitido por Identity en todas sus peticiones. Ejecute primero «0. Login en Identity (negocio)»: guarda el token en la variable accessToken y el resto de peticiones lo heredan por la autenticación de la colección.\n\nCrear, actualizar y cancelar exigen el rol Business o Admin. Listar y consultar el detalle aceptan cualquier usuario autenticado, así que el token de negocio cubre los diez escenarios.\n\nIdentity corre en el puerto 5223 y Donations en el 5001.",
+    "description": "Pruebas de la Entrega del microservicio Donations, ahora con autenticación.\n\nDonations exige un JWT emitido por Identity en todas sus peticiones. Ejecute primero «0. Login en Identity (negocio)»: guarda el token en la variable accessToken y el resto de peticiones lo heredan por la autenticación de la colección.\n\nCrear, actualizar y cancelar exigen el rol Business o Admin. Listar y consultar el detalle aceptan cualquier usuario autenticado, así que el token de negocio cubre los diez escenarios.\n\nIdentity corre en el puerto 5223 y Donations en el 5001. Después de arrancar Donations, ejecute SELECT Id FROM FoodCategories WHERE Name = N'Panadería'; en su base de datos y copie el ID en la variable de colección categoriaPanaderia. Ejecute el caso 1 antes del 9 para que se guarde el ID de la donación creada.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -51,7 +51,7 @@
     },
     {
       "key": "categoriaPanaderia",
-      "value": "01A10DE6-C9D7-7B3D-A70D-4898E8C0A082",
+      "value": "",
       "type": "string"
     },
     {
@@ -61,6 +61,11 @@
     },
     {
       "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "donationId",
       "value": "",
       "type": "string"
     },
@@ -133,6 +138,31 @@
     },
     {
       "name": "1. Crear donación válida",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.unset(\"donationId\");"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Donación creada (201) con ID\", function () {",
+              "    pm.response.to.have.status(201);",
+              "    const id = pm.response.json().id;",
+              "    pm.expect(id).to.be.a(\"string\").and.not.be.empty;",
+              "    pm.collectionVariables.set(\"donationId\", id);",
+              "});"
+            ]
+          }
+        }
+      ],
       "request": {
         "method": "POST",
         "header": [
@@ -409,17 +439,17 @@
           }
         ],
         "url": {
-          "raw": "{{donationsHost}}/api/donations/01A10DE6-C9D7-7B3D-A70D-4898E8C0A082",
+          "raw": "{{donationsHost}}/api/donations/{{donationId}}",
           "host": [
             "{{donationsHost}}"
           ],
           "path": [
             "api",
             "donations",
-            "01A10DE6-C9D7-7B3D-A70D-4898E8C0A082"
+            "{{donationId}}"
           ]
         },
-        "description": "Esperado: 200 con el detalle. Reemplace el Id por uno devuelto en el POST o en el listado."
+        "description": "Esperado: 200 con el detalle. Usa el ID guardado por el caso 1."
       },
       "response": []
     },

@@ -1,6 +1,6 @@
 @Donations.Api_HostAddress = http://localhost:5001
 @Identity_HostAddress = http://localhost:5223
-@categoriaPanaderia = 01A10DE6-C9D7-7B3D-A70D-4898E8C0A082
+@categoriaPanaderia = REEMPLAZAR_CON_ID_DE_PANADERIA
 @negocio = 2c1f7c1e-5a7b-4e8a-9a3b-1d2e3f4a5b6c
 
 # Donations exige un JWT emitido por Identity en todas sus peticiones.
@@ -10,6 +10,10 @@
 # Crear, actualizar y cancelar exigen el rol Business o Admin.
 # Listar y consultar el detalle aceptan cualquier usuario autenticado.
 # Por eso basta el token de negocio para los diez escenarios.
+#
+# En la base de Donations, después de arrancar la API, ejecute:
+# SELECT Id FROM FoodCategories WHERE Name = N'Panadería';
+# Pegue el resultado en categoriaPanaderia antes de ejecutar las pruebas.
 
 ### Login en Identity como negocio (esperado: 200 con accessToken)
 # @name loginBusiness
@@ -23,6 +27,7 @@ Content-Type: application/json
 }
 
 ### 1. Crear donación válida (esperado: 201 Created con el id)
+# @name crearDonacion
 POST {{Donations.Api_HostAddress}}/api/donations
 Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
 Content-Type: application/json
@@ -150,8 +155,8 @@ GET {{Donations.Api_HostAddress}}/api/donations?foodCategoryId={{categoriaPanade
 Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
 
 ### 9. Detalle por Id existente (esperado: 200 con el detalle)
-# Reemplace el Id por uno devuelto en el POST o en el listado.
-GET {{Donations.Api_HostAddress}}/api/donations/01A10DE6-C9D7-7B3D-A70D-4898E8C0A082
+# Ejecute primero el caso 1 para obtener el ID.
+GET {{Donations.Api_HostAddress}}/api/donations/{{crearDonacion.response.body.$.id}}
 Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
 
 ### 10. Detalle por Id inexistente (esperado: 404 - No existe una donación con el Id...)
