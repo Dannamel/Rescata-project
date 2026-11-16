@@ -1,0 +1,132 @@
+# Ejecuta en orden con REST Client de VS Code y los tres servicios en local.
+# Aplica las migraciones de Identity, Donations y Pickups antes de arrancarlos.
+# Usa las contraseñas configuradas en SeedUsers para las cuentas de prueba.
+
+@identity = http://localhost:5223
+@donations = http://localhost:5001
+@pickups = http://localhost:5002
+
+### 1. Listar sin token (401)
+# @no-cookie-jar
+GET {{pickups}}/api/pickups
+
+### 2. Iniciar sesión como Business (200)
+# @name loginBusiness
+# @prompt password Contraseña de la cuenta Business
+POST {{identity}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "business.test@rescata.local",
+  "password": "{{password}}"
+}
+
+### 3. Iniciar sesión como Foundation (200)
+# @name loginFoundation
+# @prompt password Contraseña de la cuenta Foundation
+POST {{identity}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "foundation.test@rescata.local",
+  "password": "{{password}}"
+}
+
+### 4. Crear una donación para el flujo (201)
+# Usa el Id de business.test@rescata.local en AspNetUsers de Identity.
+# Obtén el ID de una categoría con SELECT Id, Name FROM FoodCategories en Donations.
+# @name crearDonacion
+# @prompt businessId Id del usuario Business en Identity
+# @prompt categoriaId Id de una categoría existente
+# @no-cookie-jar
+POST {{donations}}/api/donations
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{
+  "businessId": "{{businessId}}",
+  "title": "Pan del día para recogida",
+  "description": "Donación de prueba para el flujo de Pickups",
+  "quantityAmount": 5,
+  "quantityUnit": "Kilogramos",
+  "foodCategoryId": "{{categoriaId}}",
+  "pickupAddress": {
+    "roadType": "Calle",
+    "roadNumber": "10",
+    "crossRoadNumber": "43A",
+    "plateNumber": "25",
+    "roadSuffix": "Sur",
+    "city": "Medellín"
+  },
+  "availableUntil": "{{$datetime iso8601 6 h}}"
+}
+
+### 5. Crear una recogida como Foundation (201, Pending)
+# @name crearRecogida
+# @no-cookie-jar
+POST {{pickups}}/api/pickups
+Authorization: Bearer {{loginFoundation.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{
+  "donationId": "{{crearDonacion.response.body.$.id}}",
+  "scheduledAt": "{{$datetime iso8601 2 h}}",
+  "durationInMinutes": 30,
+  "notes": "Recoger la donación en la dirección indicada"
+}
+
+### 6. Consultar el listado paginado de la fundación (200)
+# @no-cookie-jar
+GET {{pickups}}/api/pickups?pageNumber=1&pageSize=10
+Authorization: Bearer {{loginFoundation.response.body.$.data.accessToken}}
+
+### 7. Consultar el detalle de la recogida (200)
+# @no-cookie-jar
+GET {{pickups}}/api/pickups/{{crearRecogida.response.body.$.id}}
+Authorization: Bearer {{loginFoundation.response.body.$.data.accessToken}}
+
+### 8. Reprogramar la recogida pendiente (200)
+# @no-cookie-jar
+PUT {{pickups}}/api/pickups/{{crearRecogida.response.body.$.id}}
+Authorization: Bearer {{loginFoundation.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{
+  "scheduledAt": "{{$datetime iso8601 3 h}}",
+  "durationInMinutes": 45,
+  "notes": "La fundación ajustó la hora de recogida"
+}
+
+### 9. Cancelar la primera recogida (200, Cancelled)
+# @no-cookie-jar
+PATCH {{pickups}}/api/pickups/{{crearRecogida.response.body.$.id}}/cancel
+Authorization: Bearer {{loginFoundation.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{
+  "cancelReason": "La fundación necesita reprogramar la entrega"
+}
+
+### 10. Crear otra recogida para la misma donación (201, Pending)
+# @name crearNuevaRecogida
+# @no-cookie-jar
+POST {{pickups}}/api/pickups
+Authorization: Bearer {{loginFoundation.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{{crearRecogida.request.body.*}}
+
+### 11. Intentar confirmar como Foundation (403)
+# @no-cookie-jar
+PATCH {{pickups}}/api/pickups/{{crearNuevaRecogida.response.body.$.id}}/confirm
+Authorization: Bearer {{loginFoundation.response.body.$.data.accessToken}}
+
+### 12. Confirmar como negocio dueño de la donación (200, Confirmed)
+# @no-cookie-jar
+PATCH {{pickups}}/api/pickups/{{crearNuevaRecogida.response.body.$.id}}/confirm
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+
+### 13. Completar como negocio dueño de la donación (200, Completed)
+# @no-cookie-jar
+PATCH {{pickups}}/api/pickups/{{crearNuevaRecogida.response.body.$.id}}/complete
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
