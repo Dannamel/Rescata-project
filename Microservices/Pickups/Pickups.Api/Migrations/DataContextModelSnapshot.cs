@@ -48,6 +48,12 @@ namespace Pickups.Api.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("nvarchar(512)");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<DateTime>("ScheduledAt")
                         .HasColumnType("datetime2");
 
@@ -61,6 +67,11 @@ namespace Pickups.Api.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DonationId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Pickups_ActiveDonation")
+                        .HasFilter("[Status] IN (1, 2)");
 
                     b.HasIndex("DonationId", "ScheduledAt");
 

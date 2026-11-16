@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Pickups.Api.Data;
 using Pickups.Api.Services.Donations;
+using Pickups.Api.Services.Pickups;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -31,6 +32,8 @@ public static class CustomConfiguration
         builder.AddIAM();
 
         builder.AddDonationsClient();
+
+        builder.Services.AddScoped<IPickupService, PickupService>();
 
         return builder;
     }

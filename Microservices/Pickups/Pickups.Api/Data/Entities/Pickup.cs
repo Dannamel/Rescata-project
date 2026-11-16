@@ -31,4 +31,11 @@ public class Pickup
 
     [MaxLength(512)]
     public string? CancelReason { get; set; }
+
+    /// <summary>
+    /// SQL Server la cambia en cada UPDATE. Si dos operaciones leen la misma versión y ambas guardan,
+    /// la segunda falla con DbUpdateConcurrencyException (concurrencia optimista).
+    /// </summary>
+    [Timestamp]
+    public byte[] RowVersion { get; set; } = [];
 }
