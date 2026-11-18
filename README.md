@@ -33,7 +33,9 @@ Plataforma de rescate de alimentos. Los negocios publican sus excedentes de comi
 
 ### Crear las bases y arrancar los servicios
 
-Ningún servicio aplica sus migraciones al arrancar, así que cada uno necesita su `database update` la primera vez. Se usa una terminal de PowerShell por servicio, desde la raíz del repositorio, y se arrancan en este orden.
+Ningún servicio aplica sus migraciones al arrancar. Por eso hay que ejecutar `database update` antes de arrancar cada servicio la primera vez, y también cada vez que se actualice el código con migraciones nuevas; por ejemplo, una base de Pickups creada antes de la migración que agregó `RowVersion`. Si no hay migraciones pendientes, el comando no cambia nada, así que se puede ejecutar siempre antes de arrancar.
+
+Se usa una terminal de PowerShell por servicio, desde la raíz del repositorio, y se arrancan en este orden.
 
 **Terminal 1: Identity**
 
@@ -206,9 +208,11 @@ Ejemplo de petición:
     "roadSuffix": "Sur",
     "city": "Medellín"
   },
-  "availableUntil": "2026-10-07T18:00:00Z"
+  "availableUntil": "<fecha y hora futura en UTC, por ejemplo 2 horas después de la actual>"
 }
 ```
+
+`availableUntil` debe ser una fecha futura; con una fecha pasada la respuesta es `400`. El caso 1 de `Donations.Api/Donations.Api.http` genera esa fecha con `{{$datetime iso8601 2 h}}`, así que no hay que escribirla a mano.
 
 Los enums se pueden enviar como texto (`"Kilogramos"`) o como número (`1`). Los Id de las categorías se generan al sembrar la base, así que hay que consultarlos en `FoodCategories` antes de probar.
 
