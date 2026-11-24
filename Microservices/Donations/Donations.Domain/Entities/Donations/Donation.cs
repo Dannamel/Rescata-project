@@ -91,6 +91,24 @@ public sealed class Donation
         Status = DonationStatus.Cancelled;
     }
 
+    public void Claim()
+    {
+        ApplyClaimRules();
+        Status = DonationStatus.Claimed;
+    }
+
+    public void Release()
+    {
+        ApplyClaimedRules("liberar");
+        Status = DonationStatus.Available;
+    }
+
+    public void MarkPickedUp()
+    {
+        ApplyClaimedRules("marcar como recogida");
+        Status = DonationStatus.PickedUp;
+    }
+
     // R1
     private static void ApplyBusinessIdRules(Guid businessId)
     {
@@ -139,6 +157,23 @@ public sealed class Donation
     {
         if (foodCategoryId == Guid.Empty)
             throw new BussinesRuleException("La categoría del alimento es obligatoria.");
+    }
+
+    // R10
+    private void ApplyClaimRules()
+    {
+        if (Status != DonationStatus.Available)
+            throw new BussinesRuleException("Solo se pueden reclamar donaciones disponibles.");
+
+        if (AvailableUntil <= DateTime.UtcNow)
+            throw new BussinesRuleException("La donación ya superó su hora límite y no se puede reclamar.");
+    }
+
+    // R11
+    private void ApplyClaimedRules(string action)
+    {
+        if (Status != DonationStatus.Claimed)
+            throw new BussinesRuleException($"Solo se puede {action} una donación reclamada.");
     }
 
     // Las fechas sin zona (Unspecified) se interpretan como UTC.

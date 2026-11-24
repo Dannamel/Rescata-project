@@ -35,6 +35,13 @@ public sealed class DonationTests
         return donation;
     }
 
+    private static Donation CreateClaimedDonation()
+    {
+        var donation = CreateDonation();
+        donation.Claim();
+        return donation;
+    }
+
     // ----- Creación válida -----
 
     [TestMethod]
@@ -271,6 +278,55 @@ public sealed class DonationTests
         Assert.AreEqual("La categoría del alimento es obligatoria.", ex.Message);
     }
 
+    // ----- R10: solo se reclama si está Available -----
+
+    [TestMethod]
+    public void R10_Claim_DonacionYaReclamada_LanzaBussinesRuleException()
+    {
+        var donation = CreateClaimedDonation();
+
+        var ex = Assert.Throws<BussinesRuleException>(donation.Claim);
+        Assert.AreEqual("Solo se pueden reclamar donaciones disponibles.", ex.Message);
+    }
+
+    [TestMethod]
+    public void R10_Claim_DonacionCancelada_LanzaBussinesRuleException()
+    {
+        var donation = CreateCancelledDonation();
+
+        var ex = Assert.Throws<BussinesRuleException>(donation.Claim);
+        Assert.AreEqual("Solo se pueden reclamar donaciones disponibles.", ex.Message);
+    }
+
+    // ----- R11: solo se libera o se marca como recogida si está Claimed -----
+
+    [TestMethod]
+    public void R11_Release_DonacionDisponible_LanzaBussinesRuleException()
+    {
+        var donation = CreateDonation();
+
+        var ex = Assert.Throws<BussinesRuleException>(donation.Release);
+        Assert.AreEqual("Solo se puede liberar una donación reclamada.", ex.Message);
+    }
+
+    [TestMethod]
+    public void R11_MarkPickedUp_DonacionDisponible_LanzaBussinesRuleException()
+    {
+        var donation = CreateDonation();
+
+        var ex = Assert.Throws<BussinesRuleException>(donation.MarkPickedUp);
+        Assert.AreEqual("Solo se puede marcar como recogida una donación reclamada.", ex.Message);
+    }
+
+    [TestMethod]
+    public void R7_UpdateTitle_DonacionReclamada_LanzaBussinesRuleException()
+    {
+        var donation = CreateClaimedDonation();
+
+        var ex = Assert.Throws<BussinesRuleException>(() => donation.UpdateTitle("Pan integral"));
+        Assert.AreEqual("Solo se pueden modificar donaciones disponibles.", ex.Message);
+    }
+
     // ----- Métodos de comportamiento válidos -----
 
     [TestMethod]
@@ -323,5 +379,35 @@ public sealed class DonationTests
         donation.Cancel();
 
         Assert.AreEqual(DonationStatus.Cancelled, donation.Status);
+    }
+
+    [TestMethod]
+    public void Claim_DonacionDisponible_CambiaEstadoAClaimed()
+    {
+        var donation = CreateDonation();
+
+        donation.Claim();
+
+        Assert.AreEqual(DonationStatus.Claimed, donation.Status);
+    }
+
+    [TestMethod]
+    public void Release_DonacionReclamada_VuelveAAvailable()
+    {
+        var donation = CreateClaimedDonation();
+
+        donation.Release();
+
+        Assert.AreEqual(DonationStatus.Available, donation.Status);
+    }
+
+    [TestMethod]
+    public void MarkPickedUp_DonacionReclamada_CambiaEstadoAPickedUp()
+    {
+        var donation = CreateClaimedDonation();
+
+        donation.MarkPickedUp();
+
+        Assert.AreEqual(DonationStatus.PickedUp, donation.Status);
     }
 }

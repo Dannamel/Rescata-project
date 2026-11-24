@@ -1,7 +1,10 @@
 using Donations.Application.Utilities.Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Donations.Application.UseCases.Donations.Commands.CancelDonation;
+using Donations.Application.UseCases.Donations.Commands.ClaimDonation;
 using Donations.Application.UseCases.Donations.Commands.CreateDonation;
+using Donations.Application.UseCases.Donations.Commands.MarkDonationPickedUp;
+using Donations.Application.UseCases.Donations.Commands.ReleaseDonation;
 using Donations.Application.UseCases.Donations.Commands.UpdateDonation;
 using Donations.Application.UseCases.Donations.Queries.GetDonationsList;
 using Donations.Application.UseCases.Donations.Queries.GetDonationById;
@@ -19,6 +22,9 @@ public static class ApplicationServicesRegistry
         services.AddScoped<IRequestHandler<CreateDonationCommand, Guid>, CreateDonationUseCase>();
         services.AddScoped<IRequestHandler<UpdateDonationCommand>, UpdateDonationUseCase>();
         services.AddScoped<IRequestHandler<CancelDonationCommand>, CancelDonationUseCase>();
+        services.AddScoped<IRequestHandler<ClaimDonationCommand>, ClaimDonationUseCase>();
+        services.AddScoped<IRequestHandler<ReleaseDonationCommand>, ReleaseDonationUseCase>();
+        services.AddScoped<IRequestHandler<MarkDonationPickedUpCommand>, MarkDonationPickedUpUseCase>();
 
         services.AddScoped<IRequestHandler<GetDonationsListQuery, PaginationResponse<DonationListItemDTO>>, GetDonationsListUseCase>();
         services.AddScoped<IRequestHandler<GetDonationByIdQuery, DonationDetailDTO>, GetDonationByIdUseCase>();

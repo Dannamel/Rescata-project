@@ -7,9 +7,9 @@
 # Ejecute primero el login: las demás peticiones reutilizan el token que devuelve.
 # Sin ese paso, todas responden 401.
 #
-# Crear, actualizar y cancelar exigen el rol Business o Admin.
+# Crear, actualizar, cancelar, reclamar, liberar y marcar como recogida exigen el rol Business o Admin.
 # Listar y consultar el detalle aceptan cualquier usuario autenticado.
-# Por eso basta el token de negocio para los diez escenarios.
+# Por eso basta el token de negocio para todos los escenarios.
 #
 # En la base de Donations, después de arrancar la API, ejecute:
 # SELECT Id FROM FoodCategories WHERE Name = N'Panadería';
@@ -161,6 +161,32 @@ Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
 
 ### 10. Detalle por Id inexistente (esperado: 404 - No existe una donación con el Id...)
 GET {{Donations.Api_HostAddress}}/api/donations/11111111-1111-1111-1111-111111111111
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+
+# Los casos 11 a 15 usan la donación creada en el caso 1 y van en orden.
+
+### 11. Reclamar donación disponible (esperado: 204, pasa a Claimed)
+PATCH {{Donations.Api_HostAddress}}/api/donations/{{crearDonacion.response.body.$.id}}/claim
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+
+### 12. Reclamar otra vez (esperado: 400 - Solo se pueden reclamar donaciones disponibles)
+PATCH {{Donations.Api_HostAddress}}/api/donations/{{crearDonacion.response.body.$.id}}/claim
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+
+### 13. Liberar donación reclamada (esperado: 204, vuelve a Available)
+PATCH {{Donations.Api_HostAddress}}/api/donations/{{crearDonacion.response.body.$.id}}/release
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+
+### 14. Marcar como recogida sin estar reclamada (esperado: 400 - regla R11)
+PATCH {{Donations.Api_HostAddress}}/api/donations/{{crearDonacion.response.body.$.id}}/picked-up
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+
+### 15. Reclamar y luego marcar como recogida (esperado: 204 en ambas, queda en PickedUp)
+PATCH {{Donations.Api_HostAddress}}/api/donations/{{crearDonacion.response.body.$.id}}/claim
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+
+###
+PATCH {{Donations.Api_HostAddress}}/api/donations/{{crearDonacion.response.body.$.id}}/picked-up
 Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
 
 ###

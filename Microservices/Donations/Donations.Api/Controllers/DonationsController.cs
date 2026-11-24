@@ -2,7 +2,10 @@ using Donations.Application.Utilities.Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Donations.Application.UseCases.Donations.Commands.CancelDonation;
+using Donations.Application.UseCases.Donations.Commands.ClaimDonation;
 using Donations.Application.UseCases.Donations.Commands.CreateDonation;
+using Donations.Application.UseCases.Donations.Commands.MarkDonationPickedUp;
+using Donations.Application.UseCases.Donations.Commands.ReleaseDonation;
 using Donations.Application.UseCases.Donations.Commands.UpdateDonation;
 using Donations.Application.UseCases.Donations.Queries.GetDonationsList;
 using Donations.Application.UseCases.Donations.Queries.GetDonationById;
@@ -42,6 +45,33 @@ public class DonationsController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> Cancel([FromRoute] Guid id)
     {
         await _mediator.Send(new CancelDonationCommand(id));
+
+        return NoContent();
+    }
+
+    [HttpPatch("{id:guid}/claim")]
+    [Authorize(Roles = BusinessOrAdmin)]
+    public async Task<IActionResult> Claim([FromRoute] Guid id)
+    {
+        await _mediator.Send(new ClaimDonationCommand(id));
+
+        return NoContent();
+    }
+
+    [HttpPatch("{id:guid}/release")]
+    [Authorize(Roles = BusinessOrAdmin)]
+    public async Task<IActionResult> Release([FromRoute] Guid id)
+    {
+        await _mediator.Send(new ReleaseDonationCommand(id));
+
+        return NoContent();
+    }
+
+    [HttpPatch("{id:guid}/picked-up")]
+    [Authorize(Roles = BusinessOrAdmin)]
+    public async Task<IActionResult> MarkPickedUp([FromRoute] Guid id)
+    {
+        await _mediator.Send(new MarkDonationPickedUpCommand(id));
 
         return NoContent();
     }
