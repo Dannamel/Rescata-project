@@ -1,0 +1,79 @@
+:root {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #163c2e;
+  background: #f5f8f6;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100svh;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 4vw, 3rem);
+}
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+}
+
+.brand {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.08rem;
+}
+
+.brand span {
+  color: #357a4d;
+}
+
+.brand-description,
+.app-footer {
+  color: #4c6559;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.welcome {
+  margin: auto 0;
+  padding: clamp(2rem, 7vw, 5rem) 0;
+}
+
+.eyebrow {
+  color: #31694a;
+  font-weight: 600;
+}
+
+h1 {
+  max-width: 12ch;
+  margin: 1rem 0 1.5rem;
+  font-size: clamp(3rem, 7vw, 5.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.welcome-description {
+  max-width: 46ch;
+  margin: 0;
+  color: #4c6559;
+  font-size: 1.25rem;
+  line-height: 1.7;
+}
