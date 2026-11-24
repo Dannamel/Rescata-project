@@ -23,6 +23,7 @@ namespace Donations.Persistence
 
             services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
             services.AddScoped<IDonationsRepository, DonationsRepository>();
+            services.AddScoped<IFoodCategoriesRepository, FoodCategoriesRepository>();
 
             // Seeders
             services.AddScoped<IDataSeeder, FoodCategorySeeder>();
