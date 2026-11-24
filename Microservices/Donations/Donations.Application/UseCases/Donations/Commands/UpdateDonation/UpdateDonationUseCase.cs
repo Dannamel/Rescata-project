@@ -27,6 +27,11 @@ public sealed class UpdateDonationUseCase : IRequestHandler<UpdateDonationComman
             throw new NotFoundException("La donación no existe.");
         }
 
+        if (command.CurrentBusinessId is not null && !donation.BelongsTo(command.CurrentBusinessId.Value))
+        {
+            throw new ForbiddenException("La donación pertenece a otro negocio.");
+        }
+
         Quantity quantity = new(command.QuantityAmount, command.QuantityUnit);
 
         donation.UpdateTitle(command.Title);

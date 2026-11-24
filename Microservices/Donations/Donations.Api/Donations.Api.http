@@ -9,6 +9,8 @@
 #
 # Crear, actualizar, cancelar, reclamar, liberar y marcar como recogida exigen el rol Business o Admin.
 # Listar y consultar el detalle aceptan cualquier usuario autenticado.
+# Un negocio solo puede gestionar sus propias donaciones (si no, 403); al crear, el businessId se toma del token.
+# Liberar también lo puede hacer una fundación, porque Pickups lo llama cuando ella cancela una recogida confirmada.
 # Por eso basta el token de negocio para todos los escenarios.
 #
 # En la base de Donations, después de arrancar la API, ejecute:

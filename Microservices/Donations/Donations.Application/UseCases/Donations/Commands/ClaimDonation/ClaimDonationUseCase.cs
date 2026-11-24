@@ -26,6 +26,11 @@ public sealed class ClaimDonationUseCase : IRequestHandler<ClaimDonationCommand>
             throw new NotFoundException("La donación no existe.");
         }
 
+        if (command.CurrentBusinessId is not null && !donation.BelongsTo(command.CurrentBusinessId.Value))
+        {
+            throw new ForbiddenException("La donación pertenece a otro negocio.");
+        }
+
         donation.Claim();
 
         await _repository.UpdateAsync(donation);
