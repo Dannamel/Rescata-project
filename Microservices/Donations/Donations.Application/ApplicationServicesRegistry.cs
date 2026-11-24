@@ -8,6 +8,7 @@ using Donations.Application.UseCases.Donations.Commands.ReleaseDonation;
 using Donations.Application.UseCases.Donations.Commands.UpdateDonation;
 using Donations.Application.UseCases.Donations.Queries.GetDonationsList;
 using Donations.Application.UseCases.Donations.Queries.GetDonationById;
+using Donations.Application.UseCases.FoodCategories.Queries.GetFoodCategoriesList;
 using Donations.Application.Utilities.Pagination;
 using FluentValidation;
 
@@ -28,6 +29,7 @@ public static class ApplicationServicesRegistry
 
         services.AddScoped<IRequestHandler<GetDonationsListQuery, PaginationResponse<DonationListItemDTO>>, GetDonationsListUseCase>();
         services.AddScoped<IRequestHandler<GetDonationByIdQuery, DonationDetailDTO>, GetDonationByIdUseCase>();
+        services.AddScoped<IRequestHandler<GetFoodCategoriesListQuery, IReadOnlyList<FoodCategoryDTO>>, GetFoodCategoriesListUseCase>();
 
         services.AddValidatorsFromAssemblyContaining<CreateDonationCommandValidator>();
 
