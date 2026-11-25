@@ -30,3 +30,15 @@ export function cancelPickup(id, cancelReason, signal) {
     signal,
   })
 }
+
+// El negocio dueño de la donación (o el Admin) confirma la recogida; Pickups reserva la donación en Donations.
+export function confirmPickup(id, signal) {
+  if (!isGuid(id)) return Promise.reject(new Error('El identificador de la recogida no es válido.'))
+  return apiRequest('/pickups/api/pickups/' + id + '/confirm', { method: 'PATCH', signal })
+}
+
+// El negocio dueño de la donación (o el Admin) completa la recogida; Pickups marca la donación como recogida.
+export function completePickup(id, signal) {
+  if (!isGuid(id)) return Promise.reject(new Error('El identificador de la recogida no es válido.'))
+  return apiRequest('/pickups/api/pickups/' + id + '/complete', { method: 'PATCH', signal })
+}
