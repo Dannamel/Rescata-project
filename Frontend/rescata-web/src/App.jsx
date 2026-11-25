@@ -3,6 +3,11 @@ import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation } fr
 import Login from './auth/Login.jsx'
 import { decodeSession, endSession, getToken, subscribeSession } from './auth/session.js'
 import { areas, canAccess, roleNames } from './auth/access.js'
+import DonationsList from './donations/DonationsList.jsx'
+import DonationDetail from './donations/DonationDetail.jsx'
+
+// Donations permite consultar el listado y el detalle a cualquier usuario autenticado.
+const isDonationsPath = path => typeof path === 'string' && /^\/donaciones(\/[^/]+)?$/.test(path)
 
 function Workspace() {
   const token = useSyncExternalStore(subscribeSession, getToken)
@@ -31,12 +36,13 @@ function Workspace() {
   }
   const from = location.state?.from
   if (location.pathname === '/login') {
-    return <Navigate to={areas.some(area => area.path === from) ? from : '/'} replace />
+    return <Navigate to={areas.some(area => area.path === from) || isDonationsPath(from) ? from : '/'} replace />
   }
   return (
     <main className="workspace">
       <nav aria-label="Menú principal">
         <NavLink to="/" end>Mi cuenta</NavLink>
+        <NavLink to="/donaciones">Donaciones</NavLink>
         {areas.filter(area => canAccess(area, session)).map(area =>
           <NavLink key={area.path} to={area.path}>{area.title}</NavLink>
         )}
@@ -50,6 +56,8 @@ function Workspace() {
               <dt>Roles</dt><dd>{session.roles.map(role => roleNames[role] ?? role).join(', ') || 'Sin roles asignados'}</dd>
             </dl>
           </>} />
+          <Route path="/donaciones" element={<DonationsList />} />
+          <Route path="/donaciones/:id" element={<DonationDetail />} />
           {areas.map(area => <Route key={area.path} path={area.path} element={
             canAccess(area, session)
               ? <><h1>{area.title}</h1><h2>Permisos de tu cuenta</h2>
