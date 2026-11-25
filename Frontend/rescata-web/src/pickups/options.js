@@ -66,3 +66,16 @@ export function canReschedule(status) {
 export function canCancelPickup(status) {
   return status === 'Pending' || status === 'Confirmed'
 }
+
+export function canConfirm(status) {
+  return status === 'Pending'
+}
+
+export function canComplete(status) {
+  return status === 'Confirmed'
+}
+
+// Id de las donaciones de una página de recogidas, sin repetir, para consultar cada donación una sola vez.
+export function uniqueDonationIds(pickups) {
+  return [...new Set(pickups.map(pickup => pickup.donationId))]
+}

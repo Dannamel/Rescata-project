@@ -5,6 +5,7 @@ import { formatDate, formatQuantity } from '../donations/format.js'
 import StatusBadge from '../donations/StatusBadge.jsx'
 import { decodeSession, getToken, subscribeSession } from '../auth/session.js'
 import DonationForm from './DonationForm.jsx'
+import BusinessPickups from './BusinessPickups.jsx'
 import { canCancel } from './options.js'
 
 export default function BusinessDonations() {
@@ -115,5 +116,8 @@ export default function BusinessDonations() {
             onClick={() => setPage(page + 1)}>Siguiente</button>
         </div>}
       </>)}
+
+    {/* Confirmar o completar cambia el estado de la donación en Donations: se recarga "Mis donaciones". */}
+    <BusinessPickups onChanged={() => setAttempt(value => value + 1)} />
   </>
 }
