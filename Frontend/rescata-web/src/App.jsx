@@ -6,8 +6,9 @@ import { areas, canAccess, roleNames } from './auth/access.js'
 import DonationsList from './donations/DonationsList.jsx'
 import DonationDetail from './donations/DonationDetail.jsx'
 import BusinessDonations from './business/BusinessDonations.jsx'
+import FoundationPickups from './foundation/FoundationPickups.jsx'
 
-const areaPages = { '/negocio': BusinessDonations }
+const areaPages = { '/negocio': BusinessDonations, '/fundacion': FoundationPickups }
 
 // Donations permite consultar el listado y el detalle a cualquier usuario autenticado.
 const isDonationsPath = path => typeof path === 'string' && /^\/donaciones(\/[^/]+)?$/.test(path)
