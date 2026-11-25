@@ -83,6 +83,8 @@ public sealed class Donation
         AvailableUntil = ApplyAvailableUntilRules(newAvailableUntilUtc);
     }
 
+    public bool BelongsTo(Guid businessId) => BusinessId == businessId;
+
     public void Cancel()
     {
         if (Status != DonationStatus.Available)

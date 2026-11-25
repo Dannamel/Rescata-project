@@ -1,3 +1,4 @@
+using Donations.Api.Extensions;
 using Donations.Application.Utilities.Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +19,7 @@ namespace Donations.Api.Controllers;
 public class DonationsController(IMediator mediator) : ControllerBase
 {
     private const string BusinessOrAdmin = "Business,Admin";
+    private const string BusinessFoundationOrAdmin = "Business,Foundation,Admin";
 
     private readonly IMediator _mediator = mediator;
 
@@ -25,6 +27,13 @@ public class DonationsController(IMediator mediator) : ControllerBase
     [Authorize(Roles = BusinessOrAdmin)]
     public async Task<IActionResult> Create([FromBody] CreateDonationCommand command)
     {
+        Guid? currentBusinessId = GetCurrentBusinessId();
+
+        if (currentBusinessId is not null)
+        {
+            command.BusinessId = currentBusinessId.Value;
+        }
+
         Guid donationId = await _mediator.Send(command);
 
         return StatusCode(StatusCodes.Status201Created, new { id = donationId });
@@ -35,6 +44,7 @@ public class DonationsController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateDonationCommand command)
     {
         command.Id = id;
+        command.CurrentBusinessId = GetCurrentBusinessId();
         await _mediator.Send(command);
 
         return NoContent();
@@ -44,7 +54,7 @@ public class DonationsController(IMediator mediator) : ControllerBase
     [Authorize(Roles = BusinessOrAdmin)]
     public async Task<IActionResult> Cancel([FromRoute] Guid id)
     {
-        await _mediator.Send(new CancelDonationCommand(id));
+        await _mediator.Send(new CancelDonationCommand(id, GetCurrentBusinessId()));
 
         return NoContent();
     }
@@ -53,16 +63,16 @@ public class DonationsController(IMediator mediator) : ControllerBase
     [Authorize(Roles = BusinessOrAdmin)]
     public async Task<IActionResult> Claim([FromRoute] Guid id)
     {
-        await _mediator.Send(new ClaimDonationCommand(id));
+        await _mediator.Send(new ClaimDonationCommand(id, GetCurrentBusinessId()));
 
         return NoContent();
     }
 
     [HttpPatch("{id:guid}/release")]
-    [Authorize(Roles = BusinessOrAdmin)]
+    [Authorize(Roles = BusinessFoundationOrAdmin)]
     public async Task<IActionResult> Release([FromRoute] Guid id)
     {
-        await _mediator.Send(new ReleaseDonationCommand(id));
+        await _mediator.Send(new ReleaseDonationCommand(id, GetCurrentBusinessId()));
 
         return NoContent();
     }
@@ -71,7 +81,7 @@ public class DonationsController(IMediator mediator) : ControllerBase
     [Authorize(Roles = BusinessOrAdmin)]
     public async Task<IActionResult> MarkPickedUp([FromRoute] Guid id)
     {
-        await _mediator.Send(new MarkDonationPickedUpCommand(id));
+        await _mediator.Send(new MarkDonationPickedUpCommand(id, GetCurrentBusinessId()));
 
         return NoContent();
     }
@@ -90,5 +100,16 @@ public class DonationsController(IMediator mediator) : ControllerBase
         var donation = await _mediator.Send(new GetDonationByIdQuery(id));
 
         return Ok(donation);
+    }
+
+    // Si quien llama es un negocio, solo puede gestionar sus propias donaciones.
+    private Guid? GetCurrentBusinessId()
+    {
+        if (User.IsInRole("Business") && !User.IsInRole("Admin"))
+        {
+            return User.GetUserId();
+        }
+
+        return null;
     }
 }

@@ -119,6 +119,41 @@ public sealed class UpdateDonationUseCaseTests
         Assert.AreEqual(0, unitOfWork.CommitCount);
     }
 
+    [TestMethod]
+    public async Task Handle_NegocioQueNoEsDueno_LanzaForbiddenException()
+    {
+        Donation donation = CreateDonation();
+        DonationsRepositoryFake repository = new(donation);
+        UnitOfWorkFake unitOfWork = new();
+        UpdateDonationUseCase useCase = new(repository, unitOfWork);
+        UpdateDonationCommand command = CreateUpdateCommand(donation, donation.AvailableUntil);
+        command.CurrentBusinessId = Guid.NewGuid();
+
+        ForbiddenException exception = await Assert.ThrowsExactlyAsync<ForbiddenException>(
+            () => useCase.Handle(command));
+
+        Assert.AreEqual("La donación pertenece a otro negocio.", exception.Message);
+        Assert.AreEqual("Pan del día", donation.Title);
+        Assert.IsNull(repository.UpdatedDonation);
+        Assert.AreEqual(0, unitOfWork.CommitCount);
+    }
+
+    [TestMethod]
+    public async Task Handle_NegocioDueno_ActualizaYPersiste()
+    {
+        Donation donation = CreateDonation();
+        DonationsRepositoryFake repository = new(donation);
+        UnitOfWorkFake unitOfWork = new();
+        UpdateDonationUseCase useCase = new(repository, unitOfWork);
+        UpdateDonationCommand command = CreateUpdateCommand(donation, donation.AvailableUntil);
+        command.CurrentBusinessId = donation.BusinessId;
+
+        await useCase.Handle(command);
+
+        Assert.AreEqual("Pan integral", donation.Title);
+        Assert.AreEqual(1, unitOfWork.CommitCount);
+    }
+
     private static UpdateDonationCommand CreateUpdateCommand(Donation donation, DateTime deadline) =>
         new()
         {

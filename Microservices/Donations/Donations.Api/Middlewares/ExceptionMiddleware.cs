@@ -6,7 +6,7 @@ namespace Donations.Api.Middlewares;
 
 /// <summary>
 /// Captura las excepciones de toda la petición y las convierte en una respuesta JSON
-/// con el código HTTP adecuado: 400 (validación y reglas de negocio), 404 (no existe) o 500 (inesperado).
+/// con el código HTTP adecuado: 400 (validación y reglas de negocio), 403 (sin permiso), 404 (no existe) o 500 (inesperado).
 /// </summary>
 public class ExceptionMiddleware
 {
@@ -59,6 +59,12 @@ public class ExceptionMiddleware
                 message = exception.Message;
                 break;
 
+            case ForbiddenException:
+                statusCode = StatusCodes.Status403Forbidden;
+                error = "Forbidden";
+                message = exception.Message;
+                break;
+
             case NotFoundException:
                 statusCode = StatusCodes.Status404NotFound;
                 error = "NotFound";
@@ -85,4 +91,4 @@ public class ExceptionMiddleware
             errors
         });
     }
-}
+}
