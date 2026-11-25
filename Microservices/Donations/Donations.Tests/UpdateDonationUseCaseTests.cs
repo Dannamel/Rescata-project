@@ -191,7 +191,8 @@ public sealed class UpdateDonationUseCaseTests
         public Task<PaginationResponse<Donation>> GetPagedListAsync(
             PaginationRequest pagination,
             DonationStatus? status,
-            Guid? foodCategoryId) => throw new NotSupportedException();
+            Guid? foodCategoryId,
+            Guid? businessId) => throw new NotSupportedException();
 
         public Task<bool> FoodCategoryExistsAsync(Guid foodCategoryId) => throw new NotSupportedException();
 

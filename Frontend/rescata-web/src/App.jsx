@@ -5,6 +5,9 @@ import { decodeSession, endSession, getToken, subscribeSession } from './auth/se
 import { areas, canAccess, roleNames } from './auth/access.js'
 import DonationsList from './donations/DonationsList.jsx'
 import DonationDetail from './donations/DonationDetail.jsx'
+import BusinessDonations from './business/BusinessDonations.jsx'
+
+const areaPages = { '/negocio': BusinessDonations }
 
 // Donations permite consultar el listado y el detalle a cualquier usuario autenticado.
 const isDonationsPath = path => typeof path === 'string' && /^\/donaciones(\/[^/]+)?$/.test(path)
@@ -58,12 +61,17 @@ function Workspace() {
           </>} />
           <Route path="/donaciones" element={<DonationsList />} />
           <Route path="/donaciones/:id" element={<DonationDetail />} />
-          {areas.map(area => <Route key={area.path} path={area.path} element={
-            canAccess(area, session)
-              ? <><h1>{area.title}</h1><h2>Permisos de tu cuenta</h2>
-                  <ul>{area.actions.map(action => <li key={action}>{action}</li>)}</ul></>
-              : <><h1>Acceso restringido</h1><p>Tu cuenta no tiene permiso para entrar en esta sección.</p><Link to="/">Volver a mi cuenta</Link></>
-          } />)}
+          {areas.map(area => {
+            const AreaPage = areaPages[area.path]
+            return <Route key={area.path} path={area.path} element={
+              canAccess(area, session)
+                ? (AreaPage
+                  ? <AreaPage />
+                  : <><h1>{area.title}</h1><h2>Permisos de tu cuenta</h2>
+                      <ul>{area.actions.map(action => <li key={action}>{action}</li>)}</ul></>)
+                : <><h1>Acceso restringido</h1><p>Tu cuenta no tiene permiso para entrar en esta sección.</p><Link to="/">Volver a mi cuenta</Link></>
+            } />
+          })}
           <Route path="*" element={<><h1>Página no encontrada</h1><Link to="/">Volver a mi cuenta</Link></>} />
         </Routes>
       </section>

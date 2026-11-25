@@ -8,7 +8,8 @@ public interface IDonationsRepository : IRepository<Donation>
     Task<PaginationResponse<Donation>> GetPagedListAsync(
         PaginationRequest pagination,
         DonationStatus? status,
-        Guid? foodCategoryId);
+        Guid? foodCategoryId,
+        Guid? businessId);
 
     Task<bool> FoodCategoryExistsAsync(Guid foodCategoryId);
 

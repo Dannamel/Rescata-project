@@ -11,4 +11,6 @@ public sealed class GetDonationsListQuery : IRequest<PaginationResponse<Donation
     public string? Status { get; set; }
 
     public Guid? FoodCategoryId { get; set; }
+
+    public Guid? BusinessId { get; set; }
 }

@@ -27,7 +27,20 @@ export async function apiRequest(path, { method = 'GET', body, signal, authentic
     throw new Error(authenticated ? 'La sesión terminó.' : 'Correo o contraseña incorrectos.')
   }
   if (response.status === 403) throw new Error('Tu cuenta no tiene permiso para esta acción.')
-  if (!response.ok) throw new Error('El servicio no pudo completar la solicitud (' + response.status + ').')
+  if (!response.ok) throw new Error(await describeFailure(response))
   if (response.status === 204) return null
   return response.json()
+}
+
+async function describeFailure(response) {
+  const fallback = 'El servicio no pudo completar la solicitud (' + response.status + ').'
+  try {
+    const body = await response.json()
+    const details = Array.isArray(body?.errors) ? body.errors.filter(detail => typeof detail === 'string') : []
+    if (details.length > 0) return details.join(' ')
+    if (typeof body?.message === 'string' && body.message) return body.message
+    return fallback
+  } catch {
+    return fallback
+  }
 }

@@ -25,7 +25,8 @@ public sealed class GetDonationsListUseCase
         PaginationResponse<Donation> donations = await _repository.GetPagedListAsync(
             pagination,
             status,
-            query.FoodCategoryId);
+            query.FoodCategoryId,
+            query.BusinessId);
 
         return donations.ToListItemDTO();
     }
