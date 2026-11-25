@@ -152,3 +152,49 @@ Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
 # @no-cookie-jar
 GET {{pickups}}/api/pickups/{{crearNuevaRecogida.response.body.$.id}}
 Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+
+# Los casos 17 a 21 prueban que cancelar una recogida confirmada libera la donación.
+# Usan una donación nueva porque la del caso 4 ya quedó PickedUp.
+
+### 17. Crear otra donación (201)
+# @name crearDonacionCancelacion
+# @no-cookie-jar
+POST {{donations}}/api/donations
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{{crearDonacion.request.body.*}}
+
+### 18. Crear una recogida para esa donación como Foundation (201, Pending)
+# @name crearRecogidaCancelacion
+# @no-cookie-jar
+POST {{pickups}}/api/pickups
+Authorization: Bearer {{loginFoundation.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{
+  "donationId": "{{crearDonacionCancelacion.response.body.$.id}}",
+  "scheduledAt": "{{$datetime iso8601 2 h}}",
+  "durationInMinutes": 30,
+  "notes": "Recogida que se confirma y luego se cancela"
+}
+
+### 19. Confirmar como negocio (200, Confirmed; la donación pasa a Claimed)
+# @no-cookie-jar
+PATCH {{pickups}}/api/pickups/{{crearRecogidaCancelacion.response.body.$.id}}/confirm
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+
+### 20. Cancelar como Foundation (200, Cancelled; Pickups libera la donación)
+# @no-cookie-jar
+PATCH {{pickups}}/api/pickups/{{crearRecogidaCancelacion.response.body.$.id}}/cancel
+Authorization: Bearer {{loginFoundation.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{
+  "cancelReason": "La fundación no puede ir"
+}
+
+### 21. Consultar la donación en Donations (200, status Available)
+# @no-cookie-jar
+GET {{donations}}/api/donations/{{crearDonacionCancelacion.response.body.$.id}}
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}

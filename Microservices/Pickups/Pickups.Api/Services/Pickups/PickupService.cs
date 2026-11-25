@@ -12,6 +12,8 @@ namespace Pickups.Api.Services.Pickups;
 public sealed class PickupService : IPickupService
 {
     private const string AvailableDonationStatus = "Available";
+    private const string ClaimedDonationStatus = "Claimed";
+    private const string PickedUpDonationStatus = "PickedUp";
 
     private readonly DataContext _context;
     private readonly IDonationsClient _donationsClient;
@@ -169,10 +171,19 @@ public sealed class PickupService : IPickupService
                 Error.Validation("Pickups.NotCancellable", "No se puede cancelar una recogida cancelada o completada."));
         }
 
-        bool wasConfirmed = pickup.Status == PickupStatusEnum.Confirmed;
+        // Se consulta el estado real de la donación en vez de deducirlo del estado de la recogida:
+        // - Claimed: la recogida estaba confirmada (o un intento de confirmar no alcanzó a guardarse). Se libera.
+        // - Available: no hay reserva, o un intento anterior de cancelar ya la liberó sin alcanzar a guardar. No se llama.
+        // Así, si el guardado falla, basta con reintentar la cancelación: no hace falta volver a reservar
+        // la donación (la fundación no tiene permiso para reservar).
+        Result<DonationSummaryDTO> donation = await _donationsClient.GetDonationAsync(pickup.DonationId);
 
-        // Si la recogida estaba confirmada, la donación estaba reservada: Donations la vuelve a dejar disponible
-        if (wasConfirmed)
+        if (donation.IsFailure)
+        {
+            return Result.Failure<PickupDTO>(donation.Error);
+        }
+
+        if (HasStatus(donation.Value, ClaimedDonationStatus))
         {
             Result release = await _donationsClient.ReleaseAsync(pickup.DonationId);
 
@@ -187,27 +198,19 @@ public sealed class PickupService : IPickupService
         pickup.CancelledAt = DateTime.UtcNow;
         pickup.UpdatedAt = DateTime.UtcNow;
 
-        Result<PickupDTO> saved = await SaveAndMapAsync(pickup);
-
-        // Si no se pudo guardar la cancelación, se deshace el cambio en Donations (compensación)
-        if (saved.IsFailure && wasConfirmed)
-        {
-            await _donationsClient.ClaimAsync(pickup.DonationId);
-        }
-
-        return saved;
+        return await SaveAndMapAsync(pickup);
     }
 
     public async Task<Result<PickupDTO>> ConfirmAsync(Guid id, Guid userId, bool isAdmin)
     {
-        Result<Pickup> found = await FindDonationOwnerPickupAsync(id, userId, isAdmin);
+        Result<PickupWithDonation> found = await FindDonationOwnerPickupAsync(id, userId, isAdmin);
 
         if (found.IsFailure)
         {
             return Result.Failure<PickupDTO>(found.Error);
         }
 
-        Pickup pickup = found.Value;
+        (Pickup pickup, DonationSummaryDTO donation) = found.Value;
 
         if (pickup.Status != PickupStatusEnum.Pending)
         {
@@ -217,11 +220,15 @@ public sealed class PickupService : IPickupService
 
         // Comunicación síncrona: Pickups le pide a Donations que reserve la donación (Available → Claimed).
         // Si Donations la rechaza (por ejemplo, ya venció), la recogida no se confirma.
-        Result claim = await _donationsClient.ClaimAsync(pickup.DonationId);
-
-        if (claim.IsFailure)
+        // Si ya está Claimed, un intento anterior la reservó sin alcanzar a guardar la recogida: no se vuelve a reservar.
+        if (!HasStatus(donation, ClaimedDonationStatus))
         {
-            return Result.Failure<PickupDTO>(claim.Error);
+            Result claim = await _donationsClient.ClaimAsync(pickup.DonationId);
+
+            if (claim.IsFailure)
+            {
+                return Result.Failure<PickupDTO>(claim.Error);
+            }
         }
 
         pickup.Status = PickupStatusEnum.Confirmed;
@@ -229,10 +236,9 @@ public sealed class PickupService : IPickupService
 
         Result<PickupDTO> saved = await SaveAndMapAsync(pickup);
 
-        // Si no se pudo guardar la confirmación, se libera la donación en Donations (compensación)
         if (saved.IsFailure)
         {
-            await _donationsClient.ReleaseAsync(pickup.DonationId);
+            await ReleaseIfPickupWasCancelledAsync(pickup);
         }
 
         return saved;
@@ -240,14 +246,14 @@ public sealed class PickupService : IPickupService
 
     public async Task<Result<PickupDTO>> CompleteAsync(Guid id, Guid userId, bool isAdmin)
     {
-        Result<Pickup> found = await FindDonationOwnerPickupAsync(id, userId, isAdmin);
+        Result<PickupWithDonation> found = await FindDonationOwnerPickupAsync(id, userId, isAdmin);
 
         if (found.IsFailure)
         {
             return Result.Failure<PickupDTO>(found.Error);
         }
 
-        Pickup pickup = found.Value;
+        (Pickup pickup, DonationSummaryDTO donation) = found.Value;
 
         if (pickup.Status != PickupStatusEnum.Confirmed)
         {
@@ -255,12 +261,17 @@ public sealed class PickupService : IPickupService
                 Error.Validation("Pickups.NotCompletable", "Solo se pueden completar recogidas confirmadas."));
         }
 
-        // Comunicación síncrona: Pickups le pide a Donations que marque la donación como recogida (Claimed → PickedUp)
-        Result pickedUp = await _donationsClient.MarkPickedUpAsync(pickup.DonationId);
-
-        if (pickedUp.IsFailure)
+        // Comunicación síncrona: Pickups le pide a Donations que marque la donación como recogida (Claimed → PickedUp).
+        // Si ya está PickedUp, un intento anterior la marcó sin alcanzar a guardar la recogida: no se vuelve a marcar
+        // (Donations solo lo permite desde Claimed) y el reintento solo guarda la recogida como Completed.
+        if (!HasStatus(donation, PickedUpDonationStatus))
         {
-            return Result.Failure<PickupDTO>(pickedUp.Error);
+            Result pickedUp = await _donationsClient.MarkPickedUpAsync(pickup.DonationId);
+
+            if (pickedUp.IsFailure)
+            {
+                return Result.Failure<PickupDTO>(pickedUp.Error);
+            }
         }
 
         pickup.Status = PickupStatusEnum.Completed;
@@ -275,7 +286,7 @@ public sealed class PickupService : IPickupService
     /// </summary>
     private static Error ValidateDonation(DonationSummaryDTO donation, DateTime scheduledAt, int durationInMinutes)
     {
-        if (!string.Equals(donation.Status, AvailableDonationStatus, StringComparison.OrdinalIgnoreCase))
+        if (!HasStatus(donation, AvailableDonationStatus))
         {
             return Error.Validation("Pickups.DonationUnavailable", "La donación no está disponible para recogida.");
         }
@@ -297,6 +308,29 @@ public sealed class PickupService : IPickupService
         }
 
         return Error.None;
+    }
+
+    private static bool HasStatus(DonationSummaryDTO donation, string status) =>
+        string.Equals(donation.Status, status, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// La confirmación no se guardó. Si fue porque otra operación canceló la recogida al mismo tiempo,
+    /// la reserva hecha en Donations ya no tiene recogida activa y se libera (con el token del negocio o del Admin,
+    /// que sí pueden liberar). Si la recogida sigue Pending, la reserva se deja: el reintento de confirmar
+    /// la reutiliza y cancelar la libera.
+    /// </summary>
+    private async Task ReleaseIfPickupWasCancelledAsync(Pickup pickup)
+    {
+        PickupStatusEnum? storedStatus = await _context.Pickups
+            .AsNoTracking()
+            .Where(p => p.Id == pickup.Id)
+            .Select(p => (PickupStatusEnum?)p.Status)
+            .FirstOrDefaultAsync();
+
+        if (storedStatus == PickupStatusEnum.Cancelled)
+        {
+            await _donationsClient.ReleaseAsync(pickup.DonationId);
+        }
     }
 
     private async Task<Result<PickupDTO>> SaveAndMapAsync(Pickup pickup)
@@ -376,38 +410,38 @@ public sealed class PickupService : IPickupService
         return Result.Success(pickup);
     }
 
-    /// <summary>Busca la recogida: el Admin puede actuar sobre cualquiera; un negocio, solo si la donación es suya.</summary>
-    private async Task<Result<Pickup>> FindDonationOwnerPickupAsync(Guid id, Guid userId, bool isAdmin)
+    /// <summary>
+    /// Busca la recogida y su donación: el Admin puede actuar sobre cualquiera; un negocio, solo si la donación es suya.
+    /// La donación se devuelve también para conocer su estado actual en Donations.
+    /// </summary>
+    private async Task<Result<PickupWithDonation>> FindDonationOwnerPickupAsync(Guid id, Guid userId, bool isAdmin)
     {
         Pickup? pickup = await _context.Pickups.FirstOrDefaultAsync(p => p.Id == id);
 
         if (pickup is null)
         {
-            return Result.Failure<Pickup>(
+            return Result.Failure<PickupWithDonation>(
                 Error.NotFound("Pickups.NotFound", "La recogida no existe."));
         }
 
-        if (isAdmin)
-        {
-            return Result.Success(pickup);
-        }
-
-        // El dueño de la donación (BusinessId) lo conoce Donations
+        // El dueño de la donación (BusinessId) y su estado los conoce Donations
         Result<DonationSummaryDTO> donation = await _donationsClient.GetDonationAsync(pickup.DonationId);
 
         if (donation.IsFailure)
         {
-            return Result.Failure<Pickup>(donation.Error);
+            return Result.Failure<PickupWithDonation>(donation.Error);
         }
 
-        if (donation.Value.BusinessId != userId)
+        if (!isAdmin && donation.Value.BusinessId != userId)
         {
-            return Result.Failure<Pickup>(
+            return Result.Failure<PickupWithDonation>(
                 Error.Forbidden("Pickups.NotDonationOwner", "Solo el negocio dueño de la donación puede gestionar esta recogida."));
         }
 
-        return Result.Success(pickup);
+        return Result.Success(new PickupWithDonation(pickup, donation.Value));
     }
+
+    private sealed record PickupWithDonation(Pickup Pickup, DonationSummaryDTO Donation);
 
     /// <summary>Lleva la fecha a UTC; si llega sin zona horaria, se asume que ya es UTC.</summary>
     private static DateTime ToUtc(DateTime value) => value.Kind switch
