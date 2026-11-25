@@ -106,6 +106,18 @@ public sealed class PickupService : IPickupService
         return Result.Success(page.Map(ToDTO));
     }
 
+    // Donaciones que ya tienen una recogida pendiente o confirmada, sin importar qué fundación la programó
+    public async Task<Result<List<Guid>>> GetActiveDonationIdsAsync()
+    {
+        List<Guid> donationIds = await _context.Pickups
+            .Where(p => p.Status == PickupStatusEnum.Pending || p.Status == PickupStatusEnum.Confirmed)
+            .Select(p => p.DonationId)
+            .Distinct()
+            .ToListAsync();
+
+        return Result.Success(donationIds);
+    }
+
     public async Task<Result<PickupDTO>> UpdateAsync(Guid id, Guid userId, UpdatePickupDTO dto, bool isAdmin)
     {
         Result<Pickup> found = await FindOwnPickupAsync(id, userId, isAdmin);

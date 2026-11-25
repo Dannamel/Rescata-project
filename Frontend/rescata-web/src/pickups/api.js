@@ -1,5 +1,7 @@
 import { apiRequest } from '../api/client.js'
+import { getDonation } from '../donations/api.js'
 import { isGuid } from '../donations/format.js'
+import { uniqueDonationIds } from './options.js'
 
 export const pageSize = 10
 
@@ -41,4 +43,20 @@ export function confirmPickup(id, signal) {
 export function completePickup(id, signal) {
   if (!isGuid(id)) return Promise.reject(new Error('El identificador de la recogida no es válido.'))
   return apiRequest('/pickups/api/pickups/' + id + '/complete', { method: 'PATCH', signal })
+}
+
+// Id de las donaciones que ya tienen una recogida pendiente o confirmada de cualquier fundación.
+export function listActiveDonationIds(signal) {
+  return apiRequest('/pickups/api/pickups/active-donations', { signal })
+}
+
+// Consulta en Donations cada donación de la página. Si una falla, esa recogida se muestra sin título ni estado.
+export async function loadPickupDonations(pickups, signal) {
+  const ids = uniqueDonationIds(pickups)
+  const results = await Promise.allSettled(ids.map(id => getDonation(id, signal)))
+  const found = {}
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') found[ids[index]] = result.value
+  })
+  return found
 }

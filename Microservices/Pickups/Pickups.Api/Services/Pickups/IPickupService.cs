@@ -13,6 +13,8 @@ public interface IPickupService
 
     Task<Result<PaginationResponse<PickupDTO>>> GetPaginationAsync(PaginationRequest request, Guid userId, bool isAdmin, bool isBusiness);
 
+    Task<Result<List<Guid>>> GetActiveDonationIdsAsync();
+
     Task<Result<PickupDTO>> UpdateAsync(Guid id, Guid userId, UpdatePickupDTO dto, bool isAdmin);
 
     Task<Result<PickupDTO>> CancelAsync(Guid id, Guid userId, CancelPickupDTO dto, bool isAdmin);
