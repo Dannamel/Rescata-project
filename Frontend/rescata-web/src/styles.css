@@ -77,3 +77,56 @@ h1 {
   font-size: 1.25rem;
   line-height: 1.7;
 }
+
+.login-layout {
+  display: grid;
+  grid-template-columns: 1.2fr minmax(18rem, 0.8fr);
+  align-items: center;
+  gap: clamp(2rem, 7vw, 6rem);
+  flex: 1;
+}
+
+.card {
+  background: white;
+  border: 1px solid #c6d5cb;
+  border-radius: 1rem;
+  padding: clamp(1.5rem, 4vw, 3rem);
+}
+
+.card h2 { margin-top: 0; }
+.card label, dt { display: block; font-weight: 600; margin: 1.2rem 0 0.4rem; }
+.card input {
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid #70897b;
+  border-radius: 0.4rem;
+  font: inherit;
+}
+
+button {
+  background: #20583c;
+  color: white;
+  border: 0;
+  border-radius: 0.4rem;
+  padding: 0.8rem 1.25rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+form button { margin-top: 1.5rem; width: 100%; }
+button:disabled { opacity: 0.7; cursor: wait; }
+:focus-visible { outline: 3px solid #247f69; outline-offset: 3px; }
+.error { color: #952b29; }
+.workspace { margin-top: 3rem; }
+.workspace nav { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.workspace nav button { margin-inline-start: auto; }
+.workspace a { color: #20583c; }
+.workspace nav .active { font-weight: 700; text-decoration-thickness: 0.16em; }
+.workspace h1 { margin-top: 0; max-width: none; font-size: clamp(2rem, 5vw, 3rem); }
+.workspace li { margin: 0.5rem 0; }
+dd { margin: 0; overflow-wrap: anywhere; }
+
+@media (max-width: 48rem) {
+  .login-layout { grid-template-columns: 1fr; gap: 0; align-content: start; }
+  .workspace nav button { margin-inline-start: 0; }
+}
