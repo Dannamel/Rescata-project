@@ -9,9 +9,9 @@ public interface IPickupService
 {
     Task<Result<PickupDTO>> CreateAsync(Guid userId, CreatePickupDTO dto);
 
-    Task<Result<PickupDTO>> GetOneAsync(Guid id, Guid userId, bool isAdmin);
+    Task<Result<PickupDTO>> GetOneAsync(Guid id, Guid userId, bool isAdmin, bool isBusiness);
 
-    Task<Result<PaginationResponse<PickupDTO>>> GetPaginationAsync(PaginationRequest request, Guid userId, bool isAdmin);
+    Task<Result<PaginationResponse<PickupDTO>>> GetPaginationAsync(PaginationRequest request, Guid userId, bool isAdmin, bool isBusiness);
 
     Task<Result<PickupDTO>> UpdateAsync(Guid id, Guid userId, UpdatePickupDTO dto, bool isAdmin);
 

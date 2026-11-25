@@ -122,11 +122,33 @@ PATCH {{pickups}}/api/pickups/{{crearNuevaRecogida.response.body.$.id}}/confirm
 Authorization: Bearer {{loginFoundation.response.body.$.data.accessToken}}
 
 ### 12. Confirmar como negocio dueño de la donación (200, Confirmed)
+# Pickups le pide a Donations que reserve la donación.
 # @no-cookie-jar
 PATCH {{pickups}}/api/pickups/{{crearNuevaRecogida.response.body.$.id}}/confirm
 Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
 
+### 12b. Consultar la donación en Donations (200, status Claimed)
+# @no-cookie-jar
+GET {{donations}}/api/donations/{{crearDonacion.response.body.$.id}}
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+
 ### 13. Completar como negocio dueño de la donación (200, Completed)
+# Pickups le pide a Donations que marque la donación como recogida.
 # @no-cookie-jar
 PATCH {{pickups}}/api/pickups/{{crearNuevaRecogida.response.body.$.id}}/complete
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+
+### 14. Consultar la donación en Donations (200, status PickedUp)
+# @no-cookie-jar
+GET {{donations}}/api/donations/{{crearDonacion.response.body.$.id}}
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+
+### 15. Listado de recogidas del negocio (200, recogidas de sus donaciones)
+# @no-cookie-jar
+GET {{pickups}}/api/pickups?pageNumber=1&pageSize=10
+Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}
+
+### 16. Detalle de la recogida como negocio dueño de la donación (200)
+# @no-cookie-jar
+GET {{pickups}}/api/pickups/{{crearNuevaRecogida.response.body.$.id}}
 Authorization: Bearer {{loginBusiness.response.body.$.data.accessToken}}

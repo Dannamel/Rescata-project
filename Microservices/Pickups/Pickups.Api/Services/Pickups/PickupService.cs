@@ -63,6 +63,7 @@ public sealed class PickupService : IPickupService
             Id = Guid.CreateVersion7(),
             DonationId = dto.DonationId,
             UserId = userId,
+            BusinessId = donation.Value.BusinessId,
             ScheduledAt = scheduledAt,
             DurationInMinutes = dto.DurationInMinutes,
             Status = PickupStatusEnum.Pending,
@@ -75,23 +76,25 @@ public sealed class PickupService : IPickupService
         return await SaveAndMapAsync(pickup);
     }
 
-    public async Task<Result<PickupDTO>> GetOneAsync(Guid id, Guid userId, bool isAdmin)
+    public async Task<Result<PickupDTO>> GetOneAsync(Guid id, Guid userId, bool isAdmin, bool isBusiness)
     {
-        Result<Pickup> pickup = await FindOwnPickupAsync(id, userId, isAdmin);
+        Result<Pickup> pickup = await FindVisiblePickupAsync(id, userId, isAdmin, isBusiness);
 
         return pickup.IsFailure
             ? Result.Failure<PickupDTO>(pickup.Error)
             : Result.Success(ToDTO(pickup.Value));
     }
 
-    public async Task<Result<PaginationResponse<PickupDTO>>> GetPaginationAsync(PaginationRequest request, Guid userId, bool isAdmin)
+    public async Task<Result<PaginationResponse<PickupDTO>>> GetPaginationAsync(PaginationRequest request, Guid userId, bool isAdmin, bool isBusiness)
     {
         IQueryable<Pickup> query = _context.Pickups.AsQueryable();
 
-        // El Admin ve todas las recogidas; los demás, solo las suyas
+        // El Admin ve todas las recogidas; el negocio, las de sus donaciones; la fundación, las que programó
         if (!isAdmin)
         {
-            query = query.Where(p => p.UserId == userId);
+            query = isBusiness
+                ? query.Where(p => p.BusinessId == userId)
+                : query.Where(p => p.UserId == userId);
         }
 
         query = query.OrderByDescending(p => p.ScheduledAt);
@@ -166,12 +169,33 @@ public sealed class PickupService : IPickupService
                 Error.Validation("Pickups.NotCancellable", "No se puede cancelar una recogida cancelada o completada."));
         }
 
+        bool wasConfirmed = pickup.Status == PickupStatusEnum.Confirmed;
+
+        // Si la recogida estaba confirmada, la donación estaba reservada: Donations la vuelve a dejar disponible
+        if (wasConfirmed)
+        {
+            Result release = await _donationsClient.ReleaseAsync(pickup.DonationId);
+
+            if (release.IsFailure)
+            {
+                return Result.Failure<PickupDTO>(release.Error);
+            }
+        }
+
         pickup.Status = PickupStatusEnum.Cancelled;
         pickup.CancelReason = dto.CancelReason;
         pickup.CancelledAt = DateTime.UtcNow;
         pickup.UpdatedAt = DateTime.UtcNow;
 
-        return await SaveAndMapAsync(pickup);
+        Result<PickupDTO> saved = await SaveAndMapAsync(pickup);
+
+        // Si no se pudo guardar la cancelación, se deshace el cambio en Donations (compensación)
+        if (saved.IsFailure && wasConfirmed)
+        {
+            await _donationsClient.ClaimAsync(pickup.DonationId);
+        }
+
+        return saved;
     }
 
     public async Task<Result<PickupDTO>> ConfirmAsync(Guid id, Guid userId, bool isAdmin)
@@ -191,10 +215,27 @@ public sealed class PickupService : IPickupService
                 Error.Validation("Pickups.NotConfirmable", "Solo se pueden confirmar recogidas pendientes."));
         }
 
+        // Comunicación síncrona: Pickups le pide a Donations que reserve la donación (Available → Claimed).
+        // Si Donations la rechaza (por ejemplo, ya venció), la recogida no se confirma.
+        Result claim = await _donationsClient.ClaimAsync(pickup.DonationId);
+
+        if (claim.IsFailure)
+        {
+            return Result.Failure<PickupDTO>(claim.Error);
+        }
+
         pickup.Status = PickupStatusEnum.Confirmed;
         pickup.UpdatedAt = DateTime.UtcNow;
 
-        return await SaveAndMapAsync(pickup);
+        Result<PickupDTO> saved = await SaveAndMapAsync(pickup);
+
+        // Si no se pudo guardar la confirmación, se libera la donación en Donations (compensación)
+        if (saved.IsFailure)
+        {
+            await _donationsClient.ReleaseAsync(pickup.DonationId);
+        }
+
+        return saved;
     }
 
     public async Task<Result<PickupDTO>> CompleteAsync(Guid id, Guid userId, bool isAdmin)
@@ -212,6 +253,14 @@ public sealed class PickupService : IPickupService
         {
             return Result.Failure<PickupDTO>(
                 Error.Validation("Pickups.NotCompletable", "Solo se pueden completar recogidas confirmadas."));
+        }
+
+        // Comunicación síncrona: Pickups le pide a Donations que marque la donación como recogida (Claimed → PickedUp)
+        Result pickedUp = await _donationsClient.MarkPickedUpAsync(pickup.DonationId);
+
+        if (pickedUp.IsFailure)
+        {
+            return Result.Failure<PickupDTO>(pickedUp.Error);
         }
 
         pickup.Status = PickupStatusEnum.Completed;
@@ -300,6 +349,33 @@ public sealed class PickupService : IPickupService
         return Result.Success(pickup);
     }
 
+    /// <summary>
+    /// Busca la recogida para consultarla: el Admin ve cualquiera; la fundación, las que programó;
+    /// el negocio, las de sus donaciones.
+    /// </summary>
+    private async Task<Result<Pickup>> FindVisiblePickupAsync(Guid id, Guid userId, bool isAdmin, bool isBusiness)
+    {
+        Pickup? pickup = await _context.Pickups.FirstOrDefaultAsync(p => p.Id == id);
+
+        if (pickup is null)
+        {
+            return Result.Failure<Pickup>(
+                Error.NotFound("Pickups.NotFound", "La recogida no existe."));
+        }
+
+        bool canSee = isAdmin
+                      || pickup.UserId == userId
+                      || (isBusiness && pickup.BusinessId == userId);
+
+        if (!canSee)
+        {
+            return Result.Failure<Pickup>(
+                Error.Forbidden("Pickups.Forbidden", "No tiene permiso sobre esta recogida."));
+        }
+
+        return Result.Success(pickup);
+    }
+
     /// <summary>Busca la recogida: el Admin puede actuar sobre cualquiera; un negocio, solo si la donación es suya.</summary>
     private async Task<Result<Pickup>> FindDonationOwnerPickupAsync(Guid id, Guid userId, bool isAdmin)
     {
@@ -346,6 +422,7 @@ public sealed class PickupService : IPickupService
         Id = pickup.Id,
         DonationId = pickup.DonationId,
         UserId = pickup.UserId,
+        BusinessId = pickup.BusinessId,
         ScheduledAt = pickup.ScheduledAt,
         DurationInMinutes = pickup.DurationInMinutes,
         Status = pickup.Status,

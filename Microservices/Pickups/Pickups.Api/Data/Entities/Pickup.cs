@@ -14,6 +14,12 @@ public class Pickup
     /// <summary>Usuario de Identity (la fundación) que programó la recogida; sale del JWT.</summary>
     public Guid UserId { get; set; }
 
+    /// <summary>
+    /// Negocio dueño de la donación. Se copia de Donations al crear la recogida,
+    /// para que el negocio pueda consultar las recogidas de sus donaciones sin llamar a Donations.
+    /// </summary>
+    public Guid BusinessId { get; set; }
+
     public DateTime ScheduledAt { get; set; }
 
     public int DurationInMinutes { get; set; } = 30;
