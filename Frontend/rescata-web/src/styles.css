@@ -126,6 +126,44 @@ button:disabled { opacity: 0.7; cursor: wait; }
 .workspace li { margin: 0.5rem 0; }
 dd { margin: 0; overflow-wrap: anywhere; }
 
+button.secondary { background: white; color: #20583c; border: 1px solid #20583c; padding: 0.6rem 1rem; }
+button.secondary:disabled { cursor: not-allowed; opacity: 0.45; }
+
+.filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem 1.5rem; margin-bottom: 1.5rem; }
+.filters label { display: block; font-weight: 600; margin-bottom: 0.4rem; }
+.filters select {
+  min-width: 14rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #70897b;
+  border-radius: 0.4rem;
+  background: white;
+  color: inherit;
+  font: inherit;
+}
+.filters .error { margin: 0.4rem 0 0; font-size: 0.9rem; }
+
+.results-count { color: #4c6559; margin: 0 0 0.5rem; }
+.loading { min-height: 1.5em; margin: 0 0 0.5rem; color: #4c6559; }
+.is-loading { opacity: 0.55; transition: opacity 0.15s; }
+.workspace .donation-list { list-style: none; margin: 0; padding: 0; }
+.workspace .donation-list li { margin: 0; padding: 1rem 0; border-top: 1px solid #dde7e0; }
+.workspace .donation-list li:last-child { border-bottom: 1px solid #dde7e0; }
+.donation-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+.donation-heading a { font-size: 1.15rem; font-weight: 600; }
+.detail-heading { margin-top: 1.5rem; }
+.detail-heading h1 { margin: 0; }
+.donation-meta { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; margin: 0.4rem 0 0; color: #4c6559; }
+
+.status { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.85rem; font-weight: 600; background: #eef2ef; color: #4c6559; }
+.status-available { background: #dff1e5; color: #1c5a35; }
+.status-claimed { background: #fdf0d2; color: #6e4b00; }
+.status-pickedup { background: #dcebf7; color: #1d4f78; }
+.status-cancelled { background: #f6e0df; color: #952b29; }
+
+.pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 1rem; margin-top: 1.5rem; }
+.detail-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+.donation-detail dd { line-height: 1.6; }
+
 @media (max-width: 48rem) {
   .login-layout { grid-template-columns: 1fr; gap: 0; align-content: start; }
   .workspace nav button { margin-inline-start: 0; }
