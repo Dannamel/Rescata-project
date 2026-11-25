@@ -20,7 +20,8 @@ namespace Donations.Persistence.Repositories
 
         public async Task<PaginationResponse<Donation>> GetPagedListAsync(PaginationRequest pagination,
                                                                           DonationStatus? status,
-                                                                          Guid? foodCategoryId)
+                                                                          Guid? foodCategoryId,
+                                                                          Guid? businessId)
         {
             IQueryable<Donation> query = _context.Set<Donation>()
                                                  .Include(d => d.FoodCategory)
@@ -34,6 +35,11 @@ namespace Donations.Persistence.Repositories
             if (foodCategoryId.HasValue)
             {
                 query = query.Where(d => d.FoodCategoryId == foodCategoryId);
+            }
+
+            if (businessId.HasValue)
+            {
+                query = query.Where(d => d.BusinessId == businessId);
             }
 
             query = query.OrderByDescending(d => d.CreatedAt);

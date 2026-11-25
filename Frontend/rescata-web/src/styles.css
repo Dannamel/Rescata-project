@@ -164,6 +164,25 @@ button.secondary:disabled { cursor: not-allowed; opacity: 0.45; }
 .detail-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
 .donation-detail dd { line-height: 1.6; }
 
+.card select,
+.card textarea {
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid #70897b;
+  border-radius: 0.4rem;
+  background: white;
+  color: inherit;
+  font: inherit;
+}
+.card textarea { min-height: 6rem; resize: vertical; }
+.business-form { margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid #dde7e0; }
+.business-form button { width: auto; }
+.business-form h3 { margin-bottom: 0; }
+.field-error { margin: 0.4rem 0 0; font-size: 0.9rem; }
+.form-success { color: #1c5a35; font-weight: 600; margin: 1rem 0 0; }
+.address-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0 1.5rem; }
+.donation-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin-top: 0.75rem; }
+
 @media (max-width: 48rem) {
   .login-layout { grid-template-columns: 1fr; gap: 0; align-content: start; }
   .workspace nav button { margin-inline-start: 0; }
