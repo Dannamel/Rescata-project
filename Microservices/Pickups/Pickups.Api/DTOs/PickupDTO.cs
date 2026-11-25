@@ -7,6 +7,7 @@ public sealed class PickupDTO
     public Guid Id { get; set; }
     public Guid DonationId { get; set; }
     public Guid UserId { get; set; }
+    public Guid BusinessId { get; set; }
     public DateTime ScheduledAt { get; set; }
     public int DurationInMinutes { get; set; }
     public PickupStatusEnum Status { get; set; }

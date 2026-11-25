@@ -18,6 +18,8 @@ public sealed class PickupsController(IPickupService pickupService) : Controller
 
     private bool IsAdmin => User.IsInRole("Admin");
 
+    private bool IsBusiness => User.IsInRole("Business");
+
     [HttpPost]
     [Authorize(Roles = FoundationOrAdmin)]
     public Task<IActionResult> Create([FromBody] CreatePickupDTO dto) =>
@@ -38,12 +40,12 @@ public sealed class PickupsController(IPickupService pickupService) : Controller
                 .ToErrorResult();
         }
 
-        return await ForCurrentUserAsync(userId => pickupService.GetPaginationAsync(request, userId, IsAdmin));
+        return await ForCurrentUserAsync(userId => pickupService.GetPaginationAsync(request, userId, IsAdmin, IsBusiness));
     }
 
     [HttpGet("{id:guid}")]
     public Task<IActionResult> GetById(Guid id) =>
-        ForCurrentUserAsync(userId => pickupService.GetOneAsync(id, userId, IsAdmin));
+        ForCurrentUserAsync(userId => pickupService.GetOneAsync(id, userId, IsAdmin, IsBusiness));
 
     [HttpPut("{id:guid}")]
     [Authorize(Roles = FoundationOrAdmin)]

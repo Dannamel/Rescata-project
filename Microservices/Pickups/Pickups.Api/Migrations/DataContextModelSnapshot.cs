@@ -28,6 +28,9 @@ namespace Pickups.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("CancelReason")
                         .HasMaxLength(512)
                         .HasColumnType("nvarchar(512)");
@@ -72,6 +75,8 @@ namespace Pickups.Api.Migrations
                         .IsUnique()
                         .HasDatabaseName("UX_Pickups_ActiveDonation")
                         .HasFilter("[Status] IN (1, 2)");
+
+                    b.HasIndex("BusinessId", "ScheduledAt");
 
                     b.HasIndex("DonationId", "ScheduledAt");
 

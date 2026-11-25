@@ -13,9 +13,10 @@ public class DataContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Para buscar rápido las recogidas de una donación y las de un usuario, ordenadas por fecha
+        // Para buscar rápido las recogidas de una donación, de una fundación y de un negocio, ordenadas por fecha
         modelBuilder.Entity<Pickup>().HasIndex(p => new { p.DonationId, p.ScheduledAt });
         modelBuilder.Entity<Pickup>().HasIndex(p => new { p.UserId, p.ScheduledAt });
+        modelBuilder.Entity<Pickup>().HasIndex(p => new { p.BusinessId, p.ScheduledAt });
 
         // Una donación solo puede tener una recogida activa (Pending o Confirmed).
         // El índice único filtrado lo garantiza la base de datos, aunque lleguen dos solicitudes a la vez.
