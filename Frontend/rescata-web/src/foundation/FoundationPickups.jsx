@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listDonations } from '../donations/api.js'
 import { formatDate, formatQuantity } from '../donations/format.js'
-import { cancelPickup, createPickup, listPickups, updatePickup } from '../pickups/api.js'
+import { cancelPickup, createPickup, listActiveDonationIds, listPickups, loadPickupDonations, updatePickup } from '../pickups/api.js'
 import { canCancelPickup, canReschedule, pickupFields, pickupStatusNames } from '../pickups/options.js'
 import PickupForm from './PickupForm.jsx'
 
@@ -10,6 +10,7 @@ export default function FoundationPickups() {
   const [attempt, setAttempt] = useState(0)
   const [donations, setDonations] = useState({ state: 'loading' })
   const [pickups, setPickups] = useState({ state: 'loading' })
+  const [pickupDonations, setPickupDonations] = useState({})
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState('')
   const [reason, setReason] = useState('')
@@ -19,8 +20,15 @@ export default function FoundationPickups() {
   useEffect(() => {
     const controller = new AbortController()
     setDonations({ state: 'loading' })
-    listDonations({ page: 1, status: 'Available' }, controller.signal)
-      .then(data => setDonations({ state: 'ready', data }))
+    // Se ocultan las disponibles que ya tienen una recogida activa, para no intentar programarlas otra vez.
+    Promise.all([
+      listDonations({ page: 1, status: 'Available' }, controller.signal),
+      listActiveDonationIds(controller.signal),
+    ])
+      .then(([data, activeIds]) => {
+        const items = data.items.filter(donation => !activeIds.includes(donation.id))
+        setDonations({ state: 'ready', data: { ...data, items } })
+      })
       .catch(error => {
         if (error.name !== 'AbortError') setDonations({ state: 'error', message: error.message })
       })
@@ -31,7 +39,12 @@ export default function FoundationPickups() {
     const controller = new AbortController()
     setPickups({ state: 'loading' })
     listPickups(page, controller.signal)
-      .then(data => setPickups({ state: 'ready', data }))
+      .then(async data => {
+        const found = await loadPickupDonations(data.items, controller.signal)
+        if (controller.signal.aborted) return
+        setPickupDonations(found)
+        setPickups({ state: 'ready', data })
+      })
       .catch(error => {
         if (error.name !== 'AbortError') setPickups({ state: 'error', message: error.message })
       })
@@ -119,13 +132,14 @@ export default function FoundationPickups() {
             </div>
             <p className="donation-meta">
               <span>{pickup.durationInMinutes} minutos</span>
-              <Link to={'/donaciones/' + pickup.donationId}>Ver donación</Link>
+              <Link to={'/donaciones/' + pickup.donationId}>{pickupDonations[pickup.donationId]?.title ?? 'Ver donación'}</Link>
               {pickup.notes && <span>{pickup.notes}</span>}
               {pickup.cancelReason && <span>Motivo: {pickup.cancelReason}</span>}
             </p>
 
             {open === 'edit-' + pickup.id &&
               <PickupForm initial={pickupFields(pickup)} submitLabel="Guardar cambios"
+                availableUntil={pickupDonations[pickup.donationId]?.availableUntil}
                 onSubmit={payload => reschedule(pickup.id, payload)} onClose={() => toggle('')} />}
 
             {open === 'cancel-' + pickup.id && <div className="pickup-form">

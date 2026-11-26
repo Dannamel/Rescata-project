@@ -43,6 +43,10 @@ public sealed class PickupsController(IPickupService pickupService) : Controller
         return await ForCurrentUserAsync(userId => pickupService.GetPaginationAsync(request, userId, IsAdmin, IsBusiness));
     }
 
+    [HttpGet("active-donations")]
+    public async Task<IActionResult> GetActiveDonationIds() =>
+        (await pickupService.GetActiveDonationIdsAsync()).ToActionResult();
+
     [HttpGet("{id:guid}")]
     public Task<IActionResult> GetById(Guid id) =>
         ForCurrentUserAsync(userId => pickupService.GetOneAsync(id, userId, IsAdmin, IsBusiness));

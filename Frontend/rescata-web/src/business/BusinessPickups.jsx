@@ -1,21 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getDonation } from '../donations/api.js'
 import { formatDate } from '../donations/format.js'
 import StatusBadge from '../donations/StatusBadge.jsx'
-import { completePickup, confirmPickup, listPickups } from '../pickups/api.js'
+import { completePickup, confirmPickup, listPickups, loadPickupDonations } from '../pickups/api.js'
 import { canComplete, canConfirm, pickupStatusNames, uniqueDonationIds } from '../pickups/options.js'
-
-// Consulta en Donations cada donación de la página. Si una falla, esa recogida se muestra sin título ni estado.
-async function loadDonations(pickups, signal) {
-  const ids = uniqueDonationIds(pickups)
-  const results = await Promise.allSettled(ids.map(id => getDonation(id, signal)))
-  const found = {}
-  results.forEach((result, index) => {
-    if (result.status === 'fulfilled') found[ids[index]] = result.value
-  })
-  return found
-}
 
 // Recogidas de las donaciones del negocio. Al confirmar o completar, Pickups le pide a Donations que reserve
 // la donación (Claimed) o la marque como recogida (PickedUp); por eso se vuelve a consultar cada donación
@@ -34,7 +22,7 @@ export default function BusinessPickups({ onChanged }) {
     setResult({ state: 'loading' })
     listPickups(page, controller.signal)
       .then(async data => {
-        const found = await loadDonations(data.items, controller.signal)
+        const found = await loadPickupDonations(data.items, controller.signal)
         if (controller.signal.aborted) return
         setDonations(found)
         setResult({ state: 'ready', data })
